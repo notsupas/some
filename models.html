@@ -1,0 +1,613 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Model Collector — FULL Autosync</title>
+  <style>
+    :root{
+      --bg:#0f1220; --card:#171a2b; --muted:#9aa3b2; --text:#e6e9f0; --accent:#7c9cff;
+      --ok:#21c7a8; --warn:#ffbf69; --danger:#ff6b6b; --border:#262b45; --shadow:0 6px 24px rgba(0,0,0,.35); --radius:14px
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Inter,Arial;background:radial-gradient(1200px 800px at 20% -10%,#1a1f3a 0,rgba(26,31,58,0) 60%),var(--bg);color:var(--text)}
+    header{position:sticky;top:0;z-index:20;backdrop-filter:blur(8px);background:linear-gradient(180deg,rgba(15,18,32,.85),rgba(15,18,32,.6));border-bottom:1px solid var(--border)}
+    .wrap{max-width:1200px;margin:0 auto;padding:16px}
+    .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:space-between}
+    .brand{display:flex;gap:10px;align-items:center;font-weight:700}
+    .logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#7c9cff,#21c7a8);display:grid;place-items:center;color:#0b0e1a;font-weight:900}
+    button,select,input[type="text"],input[type="url"],input[type="password"],textarea{
+      appearance:none;border:1px solid var(--border);background:linear-gradient(180deg,#1a1e33,#121527);
+      color:var(--text);padding:10px 12px;border-radius:12px;box-shadow:var(--shadow);font-weight:600
+    }
+    button{cursor:pointer;transition:.15s transform ease,.2s border-color}
+    button:hover{transform:translateY(-1px);border-color:#33406a}
+    button.primary{background:linear-gradient(180deg,#2b3563,#1a2147);border-color:#3a4a86}
+    button.ghost{background:transparent;box-shadow:none}
+    .layout{display:grid;grid-template-columns:320px 1fr;gap:16px;padding:16px}
+    @media (max-width: 900px){ .layout{grid-template-columns: 1fr} }
+    .panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px;box-shadow:var(--shadow)}
+    .row{display:grid;gap:10px;grid-template-columns:1fr 1fr}
+    .row-3{display:grid;gap:10px;grid-template-columns:1fr 1fr 1fr}
+    .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+    .chip{background:#22263b;color:#cbd3ff;font-size:12px;border:1px solid var(--border);padding:6px 10px;border-radius:999px;cursor:pointer}
+    .chip.active{outline:2px solid var(--accent)}
+    .grid{display:grid;gap:16px;grid-template-columns:repeat(3,1fr)}
+    @media (max-width: 1100px){ .grid{grid-template-columns:repeat(2, 1fr)} }
+    @media (max-width: 640px){ .grid{grid-template-columns:1fr} }
+    .card{border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;background:linear-gradient(180deg,#171a2b 0,#14182a 100%);box-shadow:var(--shadow);display:flex;flex-direction:column}
+    .thumb{position:relative;aspect-ratio:4/3;background:#0e1222;overflow:hidden}
+    .thumb img{width:100%;height:100%;object-fit:cover;display:block}
+    .title{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px}
+    .meta,.tags{display:flex;gap:8px;flex-wrap:wrap;margin:0 12px 8px 12px}
+    .links{display:flex;gap:8px;flex-wrap:wrap;margin:8px 12px}
+    .foot{padding:12px;display:flex;gap:8px;border-top:1px solid var(--border);margin-top:auto}
+    .small{font-size:12px;color:var(--muted)}
+    #editor{display:none;margin-top:16px} #editor.open{display:block}
+    #toast{position:fixed;right:12px;bottom:12px;background:#11162a;color:#e6e9f0;border:1px solid var(--border);padding:10px 12px;border-radius:10px;font-size:13px;display:none;z-index:60}
+    /* Cloud overlay (Safari/Chrome safe) */
+    #cloudOverlay{position:fixed;inset:0;background:rgba(0,0,0,.5);backdrop-filter:blur(2px);display:none;align-items:center;justify-content:center;z-index:100}
+    #cloudOverlay.open{display:flex}
+    #cloudPanel{width:min(780px,92vw);background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:16px}
+    .status{font-size:13px;margin-top:6px}
+    .status.ok{color:var(--ok)} .status.bad{color:var(--danger)} .status.wait{color:var(--warn)}
+    .spinner{display:inline-block;width:14px;height:14px;border:2px solid #fff;border-right-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite; vertical-align:-2px; margin-right:6px}
+    @keyframes spin{to{transform:rotate(360deg)}}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap toolbar">
+      <div class="brand">
+        <div class="logo">MC</div>
+        <div>
+          <div>Model Collector</div>
+          <div class="small">FULL Autosync (GitHub)</div>
+        </div>
+      </div>
+      <div class="flex">
+        <button class="primary" id="btnToggleEditor" type="button">➕ Dodaj modelkę</button>
+        <button id="btnExport" type="button">⬇️ Eksport</button>
+        <button id="btnImport" type="button">⬆️ Import</button>
+        <input type="file" id="importFile" accept=".json" style="display:none" />
+        <button class="ghost" id="btnCloud" type="button">☁️ Chmura</button>
+        <button class="ghost" id="btnWipe" type="button">🗑️ Wyczyść</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="layout">
+      <aside class="panel" id="filtersPanel">
+        <div class="section-title" style="display:flex;justify-content:space-between;align-items:center">
+          <h2 style="margin:4px 0 10px 0">Filtry</h2>
+          <div class="small" id="countInfo">0 pozycji</div>
+        </div>
+        <div class="row">
+          <div>
+            <label for="q">Szukaj po nazwie</label>
+            <input id="q" type="text" placeholder="np. username / imię" />
+          </div>
+          <div>
+            <label for="platform">Platforma</label>
+            <select id="platform">
+              <option value="">Dowolna</option>
+              <option value="onlyfans">OnlyFans</option>
+              <option value="chaturbate">Chaturbate</option>
+              <option value="both">Obie</option>
+            </select>
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label for="hair">Kolor włosów</label>
+            <select id="hair">
+              <option value="">Dowolny</option>
+              <option value="blonde">Blonde</option>
+              <option value="brunette">Brunette</option>
+              <option value="black">Black</option>
+              <option value="redhead">Redhead</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label for="body">Budowa ciała</label>
+            <select id="body">
+              <option value="">Dowolna</option>
+              <option value="slim">Slim</option>
+              <option value="fit">Fit</option>
+              <option value="curvy">Curvy</option>
+            </select>
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label for="eth">„Nacja” / pochodzenie</label>
+            <select id="eth">
+              <option value="">Dowolne</option>
+              <option value="latina">Latina</option>
+              <option value="asian">Asian</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label>Tagi (kliknij, by filtrować)</label>
+            <div id="filterTags" class="chips"></div>
+          </div>
+        </div>
+        <div class="flex" style="margin-top:10px; display:flex; gap:8px; align-items:center">
+          <button id="btnClearFilters" type="button">Wyczyść filtry</button>
+          <span class="small">Filtry działają live</span>
+        </div>
+      </aside>
+
+      <section>
+        <div id="grid" class="grid"></div>
+        <div id="empty" class="panel" style="display:none; text-align:center">Brak wyników. Dodaj modelkę lub zmień filtry.</div>
+
+        <div id="editor" class="panel" style="margin-top:16px">
+          <h2 id="editorTitle">Dodaj / Edytuj modelkę</h2>
+          <div class="row">
+            <div>
+              <label>Nazwa / nick</label>
+              <input type="text" id="f_name" placeholder="np. username" />
+            </div>
+            <div>
+              <label>Obraz główny (URL)</label>
+              <input type="url" id="f_imgurl" placeholder="https://..." />
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label>OnlyFans (URL)</label>
+              <input type="url" id="f_onlyfans" placeholder="https://onlyfans.com/..." />
+            </div>
+            <div>
+              <label>Chaturbate (URL)</label>
+              <input type="url" id="f_chaturbate" placeholder="https://chaturbate.com/..." />
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label>Thread na SimpCity (URL)</label>
+              <input type="url" id="f_simpcity" placeholder="https://simpcity.su/..." />
+            </div>
+            <div>
+              <label>Instagram (URL)</label>
+              <input type="url" id="f_insta" placeholder="https://instagram.com/..." />
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label>Twitter/X (URL)</label>
+              <input type="url" id="f_twitter" placeholder="https://twitter.com/..." />
+            </div>
+            <div>
+              <label>Platforma</label>
+              <select id="f_platform">
+                <option value="onlyfans">OnlyFans</option>
+                <option value="chaturbate">Chaturbate</option>
+                <option value="both">Obie</option>
+              </select>
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label>Kolor włosów</label>
+              <select id="f_hair">
+                <option value="">—</option><option value="blonde">Blonde</option><option value="brunette">Brunette</option><option value="black">Black</option><option value="redhead">Redhead</option><option value="other">Other</option>
+              </select>
+            </div>
+            <div>
+              <label>Budowa ciała</label>
+              <select id="f_body">
+                <option value="">—</option><option value="slim">Slim</option><option value="fit">Fit</option><option value="curvy">Curvy</option>
+              </select>
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label>„Nacja” / pochodzenie</label>
+              <select id="f_eth">
+                <option value="">—</option><option value="latina">Latina</option><option value="asian">Asian</option><option value="other">Other</option>
+              </select>
+            </div>
+            <div>
+              <label>Tagi (przecinki)</label>
+              <input type="text" id="f_customtags" placeholder="pawg, milf, petite, ..." />
+            </div>
+          </div>
+          <div class="flex" style="margin-top:10px; display:flex; gap:8px; align-items:center">
+            <button class="primary" id="btnSave" type="button">💾 Zapisz</button>
+            <button id="btnCancel" type="button">Anuluj</button>
+            <div class="small" id="saveInfo"></div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- Cloud Overlay -->
+  <div id="cloudOverlay">
+    <div id="cloudPanel">
+      <h3>☁️ GitHub Sync</h3>
+      <div class="panel" style="margin-top:8px">
+        <div class="row">
+          <div><label>Owner</label><input id="ghOwner" type="text" placeholder="notsupas"></div>
+          <div><label>Repo</label><input id="ghRepo" type="text" placeholder="some"></div>
+        </div>
+        <div class="row">
+          <div><label>Plik</label><input id="ghPath" type="text" value="models.json"></div>
+          <div><label>Branch</label><input id="ghBranch" type="text" value="main"></div>
+        </div>
+        <div class="row">
+          <div><label>Token (PAT)</label><input id="ghToken" type="password" placeholder="ghp_..."></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <input id="ghAuto" type="checkbox" />
+            <label for="ghAuto">Auto-zapis po zmianach</label>
+          </div>
+        </div>
+        <div class="row" style="margin-top:6px">
+          <button id="btnCloudSave" type="button">⏫ Zapisz teraz</button>
+          <button id="btnCloudLoad" type="button">⏬ Pobierz</button>
+          <button id="btnCloudClose" type="button" class="right">Zamknij</button>
+        </div>
+        <div id="cloudStatus" class="status">Gotowy.</div>
+        <div class="small">Po zapisie następuje weryfikacja z <code>raw.githubusercontent.com</code>; przy sukcesie okno zamknie się samo.</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <script>
+  document.addEventListener('DOMContentLoaded', function(){
+    const $=s=>document.querySelector(s);
+    const $$=s=>Array.from(document.querySelectorAll(s));
+    function toast(m){const t=$('#toast');t.textContent=m;t.style.display='block';setTimeout(()=>t.style.display='none',2600)}
+
+    const LS_MODELS='mc_models_v1', LS_TAGS='mc_tags_v1', LS_TAGSETS='mc_tagsets_v1', LS_CLOUD='mc_cloud_v_full';
+    let state = {
+      models: [],
+      tags: new Set(['pawg','milf','petite','big ass','cosplay','glasses']),
+      tagSets: {'Imported':['pawg','milf','petite','big ass']},
+      filters: { q:'', platform:'', hair:'', body:'', eth:'', tags:new Set() },
+      cloud: { owner:'', repo:'', path:'models.json', branch:'main', token:'', auto:false, lastPullUrl:'' }
+    };
+
+    function saveLocal(){
+      localStorage.setItem(LS_MODELS, JSON.stringify(state.models));
+      localStorage.setItem(LS_TAGS, JSON.stringify([...state.tags]));
+      localStorage.setItem(LS_TAGSETS, JSON.stringify(state.tagSets));
+      localStorage.setItem(LS_CLOUD, JSON.stringify(state.cloud));
+    }
+    function loadLocal(){
+      try{ state.models = JSON.parse(localStorage.getItem(LS_MODELS)) || []; }catch{}
+      try{ state.tags = new Set(JSON.parse(localStorage.getItem(LS_TAGS)) || [...state.tags]); }catch{}
+      try{ state.tagSets = JSON.parse(localStorage.getItem(LS_TAGSETS)) || state.tagSets; }catch{}
+      try{ Object.assign(state.cloud, JSON.parse(localStorage.getItem(LS_CLOUD)) || {}); }catch{}
+    }
+
+    // Helpers
+    function placeholder(){
+      return 'data:image/svg+xml;charset=UTF-8,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600"><rect width="100%" height="100%" fill="#14182a"/><text x="50%" y="50%" fill="#6b7392" font-family="Arial" font-size="28" text-anchor="middle" dominant-baseline="middle">Brak obrazu</text></svg>`);
+    }
+    function pill(label, value){ const span=document.createElement('span'); span.className='chip'; span.textContent = label+': '+value; return span; }
+    function chip(text, active){ const s=document.createElement('span'); s.className='chip'+(active?' active':''); s.textContent=text; return s; }
+    function linkBtn(label, url){ if(!url) return null; const a=document.createElement('a'); a.textContent=label; a.href=url; a.target='_blank'; a.rel='noopener'; return a; }
+
+    // Rendering
+    function renderFilterTags(){
+      const box = $('#filterTags'); box.innerHTML='';
+      [...state.tags].sort().forEach(t=>{
+        const el = chip(t, state.filters.tags.has(t));
+        el.addEventListener('click', ()=>{
+          if (state.filters.tags.has(t)) state.filters.tags.delete(t); else state.filters.tags.add(t);
+          renderFilterTags(); applyFilters();
+        });
+        box.appendChild(el);
+      });
+    }
+
+    function applyFilters(){
+      const f = state.filters;
+      let items = state.models.slice();
+      if (f.q){ const q=f.q.toLowerCase(); items = items.filter(m=>(m.name||'').toLowerCase().includes(q)); }
+      if (f.platform){
+        items = items.filter(m => m.platform===f.platform || (f.platform!=='both' && m.platform==='both') || (f.platform==='both' && (m.platform==='onlyfans'||m.platform==='chaturbate'||m.platform==='both')));
+      }
+      if (f.hair) items = items.filter(m => (m.hair||'')===f.hair);
+      if (f.body) items = items.filter(m => (m.body||'')===f.body);
+      if (f.eth)  items = items.filter(m => (m.eth||'')===f.eth);
+      if (f.tags.size){
+        items = items.filter(m => { const t=new Set(m.tags||[]); for (const x of f.tags){ if (!t.has(x)) return false; } return true; });
+      }
+      renderGrid(items);
+    }
+
+    function renderGrid(items){
+      const grid=$('#grid'), empty=$('#empty'); grid.innerHTML='';
+      $('#countInfo').textContent = items.length + ' ' + (items.length===1 ? 'pozycja' : 'pozycji');
+      if (!items.length){ empty.style.display='block'; return; } else empty.style.display='none';
+
+      items.forEach(m => {
+        const card=document.createElement('div'); card.className='card';
+        const th=document.createElement('div'); th.className='thumb';
+        const img=document.createElement('img'); img.src=m.image||placeholder(); img.alt=m.name||'—'; img.loading='lazy'; th.appendChild(img);
+        const title=document.createElement('div'); title.className='title';
+        const h3=document.createElement('h3'); h3.style.margin='0'; h3.textContent=m.name||'—';
+        const plat=document.createElement('span'); plat.className='chip'; plat.textContent=(m.platform==='both' ? 'OF + CB' : (m.platform||'—'));
+        title.append(h3, plat);
+
+        const meta=document.createElement('div'); meta.className='meta';
+        if (m.hair) meta.appendChild(pill('Hair', m.hair));
+        if (m.body) meta.appendChild(pill('Body', m.body));
+        if (m.eth)  meta.appendChild(pill('Origin', m.eth));
+
+        const links=document.createElement('div'); links.className='links';
+        [ ['OnlyFans',m.onlyfans], ['Chaturbate',m.chaturbate], ['SimpCity',m.simpcity], ['Instagram',m.insta], ['Twitter/X',m.twitter] ]
+          .forEach(([lbl,url])=>{ const a=linkBtn(lbl,url); if(a) links.appendChild(a); });
+
+        const tags=document.createElement('div'); tags.className='tags';
+        (m.tags||[]).forEach(t => tags.appendChild(chip(t,false)));
+
+        const foot=document.createElement('div'); foot.className='foot';
+        const ed=document.createElement('button'); ed.textContent='✏️ Edytuj'; ed.onclick=()=>openEditor(m.id);
+        const del=document.createElement('button'); del.textContent='🗑️ Usuń'; del.onclick=()=>removeModel(m.id);
+        foot.append(ed, del);
+
+        card.append(th, title, meta, links, tags, foot);
+        grid.appendChild(card);
+      });
+    }
+
+    function openEditor(id){
+      state.editId = id || null;
+      $('#editor').classList.add('open');
+      $('#editorTitle').textContent = id ? 'Edytuj modelkę' : 'Dodaj modelkę';
+      $('#saveInfo').textContent='';
+      const m = id ? state.models.find(x=>x.id===id) : {};
+      $('#f_name').value = (m&&m.name) || '';
+      $('#f_imgurl').value = (m&&m.image) || '';
+      $('#f_onlyfans').value = (m&&m.onlyfans) || '';
+      $('#f_chaturbate').value = (m&&m.chaturbate) || '';
+      $('#f_simpcity').value = (m&&m.simpcity) || '';
+      $('#f_insta').value = (m&&m.insta) || '';
+      $('#f_twitter').value = (m&&m.twitter) || '';
+      $('#f_platform').value = (m&&m.platform) || 'onlyfans';
+      $('#f_hair').value = (m&&m.hair) || '';
+      $('#f_body').value = (m&&m.body) || '';
+      $('#f_eth').value  = (m&&m.eth) || '';
+      $('#f_customtags').value = (m&&m.tags||[]).join(', ');
+      window.scrollTo({top:0, behavior:'smooth'});
+    }
+    function parseTags(text){ return (text||'').split(',').map(s=>s.trim()).filter(Boolean); }
+
+    function onSave(){
+      const payload = {
+        name: $('#f_name').value.trim(),
+        image: $('#f_imgurl').value.trim(),
+        onlyfans: $('#f_onlyfans').value.trim(),
+        chaturbate: $('#f_chaturbate').value.trim(),
+        simpcity: $('#f_simpcity').value.trim(),
+        insta: $('#f_insta').value.trim(),
+        twitter: $('#f_twitter').value.trim(),
+        hair: $('#f_hair').value,
+        body: $('#f_body').value,
+        eth: $('#f_eth').value,
+        platform: $('#f_platform').value,
+        tags: parseTags($('#f_customtags').value),
+        createdAt: Date.now()
+      };
+      if (!payload.name){ toast('Podaj nazwę'); return; }
+      payload.tags.forEach(t => state.tags.add(t));
+      if (state.editId){
+        const i = state.models.findIndex(m=>m.id===state.editId);
+        if (i>=0) state.models[i] = Object.assign({}, state.models[i], payload);
+      } else {
+        state.models.unshift(Object.assign({ id: 'id-'+Date.now()+'-'+Math.random().toString(16).slice(2) }, payload));
+      }
+      saveLocal();
+      $('#saveInfo').textContent = 'Zapisano ✅';
+      $('#editor').classList.remove('open');
+      renderFilterTags();
+      applyFilters();
+      if (state.cloud.auto) scheduleCloudPush();
+    }
+
+    function removeModel(id){
+      if (!confirm('Usunąć tę pozycję?')) return;
+      state.models = state.models.filter(m=>m.id!==id);
+      saveLocal(); applyFilters();
+      if (state.cloud.auto) scheduleCloudPush();
+    }
+
+    // Filters
+    $('#q').addEventListener('input', e => { state.filters.q=e.target.value; applyFilters(); });
+    $('#platform').addEventListener('change', e => { state.filters.platform=e.target.value; applyFilters(); });
+    $('#hair').addEventListener('change', e => { state.filters.hair=e.target.value; applyFilters(); });
+    $('#body').addEventListener('change', e => { state.filters.body=e.target.value; applyFilters(); });
+    $('#eth').addEventListener('change', e => { state.filters.eth=e.target.value; applyFilters(); });
+    $('#btnClearFilters').addEventListener('click', ()=>{
+      state.filters = { q:'', platform:'', hair:'', body:'', eth:'', tags:new Set() };
+      $('#q').value=''; $('#platform').value=''; $('#hair').value=''; $('#body').value=''; $('#eth').value='';
+      renderFilterTags(); applyFilters();
+    });
+
+    // Toolbar
+    $('#btnToggleEditor').addEventListener('click', ()=>openEditor(null));
+    $('#btnSave').addEventListener('click', onSave);
+    $('#btnCancel').addEventListener('click', ()=>$('#editor').classList.remove('open'));
+    $('#btnExport').addEventListener('click', ()=>{
+      const data = { models: state.models, tags:[...state.tags], tagSets: state.tagSets, sort:{key:'created',dir:'desc'}, view:'grid' };
+      const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
+      const url = URL.createObjectURL(blob); const a=document.createElement('a');
+      a.href=url; a.download='model-collector-backup.json'; a.click();
+      setTimeout(()=>URL.revokeObjectURL(url), 1500);
+    });
+    $('#btnImport').addEventListener('click', ()=>$('#importFile').click());
+    $('#importFile').addEventListener('change', e=>{
+      const file=e.target.files[0]; if (!file) return;
+      const reader=new FileReader();
+      reader.onload=()=>{
+        try{
+          const json=JSON.parse(reader.result);
+          if (Array.isArray(json.models)) state.models = json.models;
+          if (Array.isArray(json.tags)) state.tags = new Set(json.tags);
+          if (json.tagSets) state.tagSets = json.tagSets;
+          saveLocal(); renderFilterTags(); applyFilters(); toast('Zaimportowano ✅');
+          if (state.cloud.auto) scheduleCloudPush();
+        } catch(err){ toast('Błąd importu'); }
+      };
+      reader.readAsText(file); e.target.value='';
+    });
+    $('#btnWipe').addEventListener('click', ()=>{
+      if (!confirm('Wyczyścić lokalne dane?')) return;
+      localStorage.removeItem(LS_MODELS);
+      localStorage.removeItem(LS_TAGS);
+      localStorage.removeItem(LS_TAGSETS);
+      state.models=[]; state.tags=new Set(['pawg','milf','petite','big ass','cosplay','glasses']); state.tagSets={'Imported':['pawg','milf','petite','big ass']};
+      renderFilterTags(); applyFilters(); toast('Wyczyszczono');
+      if (state.cloud.auto) scheduleCloudPush();
+    });
+
+    // ---- Cloud (GitHub) ----
+    const overlay = $('#cloudOverlay');
+    $('#btnCloud').addEventListener('click', ()=>{
+      // Prefill
+      $('#ghOwner').value = state.cloud.owner||'';
+      $('#ghRepo').value = state.cloud.repo||'';
+      $('#ghPath').value = state.cloud.path||'models.json';
+      $('#ghBranch').value = state.cloud.branch||'main';
+      $('#ghToken').value = state.cloud.token||'';
+      $('#ghAuto').checked = !!state.cloud.auto;
+      $('#cloudStatus').textContent='Gotowy.'; $('#cloudStatus').className='status';
+      overlay.classList.add('open');
+    });
+    $('#btnCloudClose').addEventListener('click', ()=>overlay.classList.remove('open'));
+    $('#ghAuto').addEventListener('change', e=>{ state.cloud.auto=!!e.target.checked; saveLocal(); if(state.cloud.auto) scheduleCloudPush(); });
+
+    function b64(s){ return btoa(unescape(encodeURIComponent(s))); }
+    async function verifyReadback(owner,repo,path,branch){
+      const url=`https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${path}`;
+      try{
+        const res=await fetch(url+'?t='+(Date.now()));
+        const text=await res.text();
+        try{
+          const j=JSON.parse(text);
+          const n = Array.isArray(j.models)? j.models.length : 0;
+          $('#cloudStatus').innerHTML = `<span class="status ok">✅ Zapis potwierdzony — pobrano ${n} modeli</span> <a class="small" target="_blank" rel="noopener" href="${url}">(podgląd JSON)</a>`;
+          return true;
+        }catch(e){
+          $('#cloudStatus').innerHTML = `<span class="status bad">⚠️ Zapis poszedł, ale RAW nie jest JSON.</span> <a class="small" target="_blank" rel="noopener" href="${url}">(otwórz)</a>`;
+          return false;
+        }
+      }catch(e){
+        $('#cloudStatus').textContent='❌ Nie udało się potwierdzić odczytu: '+e.message;
+        $('#cloudStatus').className='status bad';
+        return false;
+      }
+    }
+
+    async function getSha(owner,repo,path,branch,token){
+      const url=`https://api.github.com/repos/${owner}/${repo}/contents/${encodeURIComponent(path)}?ref=${encodeURIComponent(branch)}`;
+      const headers={'Accept':'application/vnd.github+json','Authorization':'token '+token};
+      const r=await fetch(url,{headers});
+      if(r.status===404) return null;
+      if(!r.ok) throw new Error('getSha HTTP '+r.status);
+      const j=await r.json(); return j.sha;
+    }
+
+    async function cloudSave(){
+      const owner=$('#ghOwner').value.trim()||state.cloud.owner;
+      const repo=$('#ghRepo').value.trim()||state.cloud.repo;
+      const path=$('#ghPath').value.trim()||state.cloud.path||'models.json';
+      const branch=$('#ghBranch').value.trim()||state.cloud.branch||'main';
+      const token=$('#ghToken').value.trim()||state.cloud.token;
+      if(!owner||!repo||!path||!branch||!token){ $('#cloudStatus').textContent='Uzupełnij owner/repo/path/branch/token'; $('#cloudStatus').className='status bad'; return; }
+
+      state.cloud = { owner, repo, path, branch, token, auto:$('#ghAuto').checked, lastPullUrl:`https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${path}` };
+      saveLocal();
+
+      const btn=$('#btnCloudSave'); btn.disabled=true; btn.textContent='⏳ Zapisuję…';
+      $('#cloudStatus').innerHTML='<span class="spinner"></span><span class="status wait">Wysyłam commit do GitHub…</span>';
+
+      try{
+        const sha = await getSha(owner,repo,path,branch,token);
+        const api=`https://api.github.com/repos/${owner}/${repo}/contents/${encodeURIComponent(path)}`;
+        const data={ models: state.models, tags:[...state.tags], tagSets: state.tagSets, sort:{key:'created',dir:'desc'}, view:'grid' };
+        const body={ message:'MC autosave', content:b64(JSON.stringify(data,null,2)), branch, sha: sha || undefined };
+
+        const res=await fetch(api,{method:'PUT', headers:{'Accept':'application/vnd.github+json','Content-Type':'application/json','Authorization':'token '+token}, body: JSON.stringify(body)});
+        const text=await res.text();
+        if(!res.ok){ $('#cloudStatus').innerHTML=`<span class="status bad">❌ Błąd HTTP ${res.status}</span><div class="small">${text.replace(/</g,'&lt;')}</div>`; btn.disabled=false; btn.textContent='⏫ Zapisz teraz'; return; }
+
+        $('#cloudStatus').innerHTML='<span class="spinner"></span><span class="status wait">Zapis OK — weryfikuję odczyt…</span>';
+        const ok = await verifyReadback(owner,repo,path,branch);
+        btn.disabled=false; btn.textContent='⏫ Zapisz teraz';
+        if(ok) setTimeout(()=>overlay.classList.remove('open'), 900);
+      }catch(e){
+        $('#cloudStatus').textContent='❌ Wyjątek: '+e.message; $('#cloudStatus').className='status bad'; btn.disabled=false; btn.textContent='⏫ Zapisz teraz';
+      }
+    }
+
+    async function cloudLoad(){
+      const owner=$('#ghOwner').value.trim()||state.cloud.owner;
+      const repo=$('#ghRepo').value.trim()||state.cloud.repo;
+      const path=$('#ghPath').value.trim()||state.cloud.path||'models.json';
+      const branch=$('#ghBranch').value.trim()||state.cloud.branch||'main';
+      const url=`https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${path}`;
+      $('#cloudStatus').innerHTML='<span class="spinner"></span><span class="status wait">Pobieram z GitHub…</span>';
+      try{
+        const res=await fetch(url+'?t='+(Date.now()));
+        const j=await res.json();
+        if(Array.isArray(j.models)){
+          state.models=j.models; if(Array.isArray(j.tags)) state.tags = new Set(j.tags); if(j.tagSets) state.tagSets=j.tagSets;
+          saveLocal(); renderFilterTags(); applyFilters();
+          $('#cloudStatus').innerHTML=`<span class="status ok">✅ Pobrano ${j.models.length} modeli</span> <a class="small" target="_blank" rel="noopener" href="${url}">(podgląd JSON)</a>`;
+        } else { $('#cloudStatus').textContent='Plik nie zawiera pola models'; $('#cloudStatus').className='status bad'; }
+      }catch(e){
+        $('#cloudStatus').textContent='❌ Nie udało się pobrać: '+e.message; $('#cloudStatus').className='status bad';
+      }
+    }
+
+    // Binders
+    $('#btnCloudSave').addEventListener('click', cloudSave);
+    $('#btnCloudLoad').addEventListener('click', cloudLoad);
+
+    // Autosave debounce
+    let pushTimer=null;
+    function scheduleCloudPush(){
+      if(!state.cloud.auto) return;
+      if(pushTimer) clearTimeout(pushTimer);
+      pushTimer = setTimeout(()=>{
+        // open overlay silently to reuse inputs (or use stored settings)
+        $('#ghOwner').value = state.cloud.owner||'';
+        $('#ghRepo').value = state.cloud.repo||'';
+        $('#ghPath').value = state.cloud.path||'models.json';
+        $('#ghBranch').value = state.cloud.branch||'main';
+        $('#ghToken').value = state.cloud.token||'';
+        $('#ghAuto').checked = !!state.cloud.auto;
+        cloudSave();
+      }, 1500);
+    }
+
+    // Init
+    loadLocal(); renderFilterTags(); applyFilters();
+
+    // Autoload from ?data=
+    try{
+      const u=new URL(location.href); const dataUrl=u.searchParams.get('data');
+      if (dataUrl){
+        const res = await fetch(dataUrl+'?t='+(Date.now()));
+        const j = await res.json();
+        if(Array.isArray(j.models)){
+          state.models=j.models; if(Array.isArray(j.tags)) state.tags = new Set(j.tags); if(j.tagSets) state.tagSets=j.tagSets;
+          saveLocal(); renderFilterTags(); applyFilters();
+        }
+      }
+    }catch{}
+  });
+  </script>
+</body>
+</html>
