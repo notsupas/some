@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Model Collector — Chrome Fix</title>
+  <style>
+    :root{--bg:#0f1220;--card:#171a2b;--muted:#9aa3b2;--text:#e6e9f0;--accent:#7c9cff;--border:#262b45;--shadow:0 6px 24px rgba(0,0,0,.35);--radius:14px}
+    *{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Inter,Arial;background:radial-gradient(1200px 800px at 20% -10%,#1a1f3a 0,rgba(26,31,58,0) 60%),var(--bg);color:var(--text)}
+    header{position:sticky;top:0;z-index:20;backdrop-filter:blur(8px);background:linear-gradient(180deg,rgba(15,18,32,.85),rgba(15,18,32,.6));border-bottom:1px solid var(--border)}
+    .wrap{max-width:1100px;margin:0 auto;padding:16px}
+    .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:space-between}
+    .brand{display:flex;gap:10px;align-items:center;font-weight:700}.logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#7c9cff,#21c7a8);display:grid;place-items:center;color:#0b0e1a;font-weight:900}
+    button,select,input[type="text"],input[type="url"],input[type="password"]{appearance:none;border:1px solid var(--border);background:linear-gradient(180deg,#1a1e33,#121527);color:var(--text);padding:10px 12px;border-radius:12px;box-shadow:var(--shadow);font-weight:600}
+    button{cursor:pointer;transition:.15s transform ease,.2s border-color} button:hover{transform:translateY(-1px);border-color:#33406a}
+    button.primary{background:linear-gradient(180deg,#2b3563,#1a2147);border-color:#3a4a86} button.ghost{background:transparent;box-shadow:none}
+    .layout{display:grid;grid-template-columns:320px 1fr;gap:16px;padding:16px} @media(max-width:900px){.layout{grid-template-columns:1fr}}
+    .panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px;box-shadow:var(--shadow)}
+    .row{display:grid;gap:10px;grid-template-columns:1fr 1fr}
+    .grid{display:grid;gap:16px;grid-template-columns:repeat(3,1fr)} @media(max-width:1100px){.grid{grid-template-columns:repeat(2,1fr)}} @media(max-width:640px){.grid{grid-template-columns:1fr}}
+    .card{border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;background:linear-gradient(180deg,#171a2b 0,#14182a 100%);box-shadow:var(--shadow);display:flex;flex-direction:column}
+    .thumb{position:relative;aspect-ratio:4/3;background:#0e1222;overflow:hidden}.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+    .title{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px}.links{display:flex;gap:8px;flex-wrap:wrap;margin:8px 12px}
+    .meta,.tags{display:flex;gap:8px;flex-wrap:wrap;margin:0 12px 8px 12px}.chip{background:#22263b;color:#cbd3ff;font-size:12px;border:1px solid var(--border);padding:6px 10px;border-radius:999px}
+    .foot{padding:12px;display:flex;gap:8px;border-top:1px solid var(--border);margin-top:auto}
+    #editor{display:none;margin-top:16px} #editor.open{display:block}
+    #toast{position:fixed;right:12px;bottom:12px;background:#11162a;color:#e6e9f0;border:1px solid var(--border);padding:10px 12px;border-radius:10px;font-size:13px;display:none;z-index:60}
+    #jsStatus{position:fixed;left:12px;bottom:12px;background:#11162a;border:1px solid var(--border);padding:8px 10px;border-radius:8px;font-size:12px}
+    #cloudPanel{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5)} #cloudPanel .box{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(720px,92vw);background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:16px}
+  </style>
+</head>
+<body>
+  <div id="jsStatus">⏳ JS init...</div>
+  <header>
+    <div class="wrap toolbar">
+      <div class="brand"><div class="logo">MC</div><div><div>Model Collector</div><div class="small">Chrome Fix</div></div></div>
+      <div class="flex">
+        <button class="primary" id="btnToggleEditor" type="button">➕ Dodaj modelkę</button>
+        <button id="btnExport" type="button">⬇️ Eksport</button>
+        <button id="btnImport" type="button">⬆️ Import</button><input type="file" id="importFile" accept=".json" style="display:none" />
+        <button class="ghost" id="btnCloud" type="button">☁️ Chmura</button>
+        <button class="ghost" id="btnDemo" type="button">🔄 Przykłady</button>
+        <button class="ghost" id="btnForcePush" type="button">⏫ Wymuś zapis</button>
+        <button class="ghost" id="btnForcePull" type="button">⏬ Wymuś pobranie</button>
+        <button class="ghost" id="btnWipe" type="button">🗑️ Wyczyść</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="layout">
+      <aside class="panel">
+        <h2>Filtry</h2>
+        <div class="row">
+          <div><label for="q">Szukaj</label><input id="q" type="text" placeholder="np. nick" /></div>
+          <div><label for="platform">Platforma</label><select id="platform"><option value="">Dowolna</option><option value="onlyfans">OnlyFans</option><option value="chaturbate">Chaturbate</option></select></div>
+        </div>
+        <div class="row">
+          <div><label for="hair">Włosy</label><select id="hair"><option value="">Dowolne</option><option value="blonde">Blonde</option><option value="brunette">Brunette</option><option value="black">Black</option><option value="redhead">Redhead</option><option value="other">Other</option></select></div>
+          <div><label for="body">Sylwetka</label><select id="body"><option value="">Dowolna</option><option value="slim">Slim</option><option value="fit">Fit</option><option value="curvy">Curvy</option></select></div>
+        </div>
+        <div class="row">
+          <div><label for="eth">Pochodzenie</label><select id="eth"><option value="">Dowolne</option><option value="latina">Latina</option><option value="asian">Asian</option><option value="other">Other</option></select></div>
+          <div class="right" id="countInfo" style="align-self:end">0 pozycji</div>
+        </div>
+      </aside>
+
+      <section>
+        <div id="grid" class="grid"></div>
+        <div id="empty" class="panel" style="display:none;text-align:center">Brak wyników</div>
+
+        <div id="editor" class="panel">
+          <h2 id="editorTitle">Dodaj / Edytuj modelkę</h2>
+          <div class="row">
+            <div><label>Nazwa / nick</label><input id="f_name" type="text" /></div>
+            <div><label>Obraz (URL)</label><input id="f_imgurl" type="url" placeholder="https://..." /></div>
+          </div>
+          <div class="row">
+            <div><label>OnlyFans</label><input id="f_onlyfans" type="url" placeholder="https://onlyfans.com/..." /></div>
+            <div><label>Chaturbate</label><input id="f_chaturbate" type="url" placeholder="https://chaturbate.com/..." /></div>
+          </div>
+          <div class="row">
+            <div><label>SimpCity</label><input id="f_simpcity" type="url" placeholder="https://simpcity..." /></div>
+            <div><label>Instagram</label><input id="f_insta" type="url" placeholder="https://instagram.com/..." /></div>
+          </div>
+          <div class="row">
+            <div><label>Twitter/X</label><input id="f_twitter" type="url" placeholder="https://twitter.com/..." /></div>
+            <div><label>Platforma</label><select id="f_platform"><option value="onlyfans">OnlyFans</option><option value="chaturbate">Chaturbate</option><option value="both">Obie</option></select></div>
+          </div>
+          <div class="row">
+            <div><label>Włosy</label><select id="f_hair"><option value="">—</option><option value="blonde">Blonde</option><option value="brunette">Brunette</option><option value="black">Black</option><option value="redhead">Redhead</option><option value="other">Other</option></select></div>
+            <div><label>Sylwetka</label><select id="f_body"><option value="">—</option><option value="slim">Slim</option><option value="fit">Fit</option><option value="curvy">Curvy</option></select></div>
+          </div>
+          <div class="row">
+            <div><label>Pochodzenie</label><select id="f_eth"><option value="">—</option><option value="latina">Latina</option><option value="asian">Asian</option><option value="other">Other</option></select></div>
+            <div><label>Tagi (przecinki)</label><input id="f_customtags" type="text" placeholder="pawg, milf, ..." /></div>
+          </div>
+          <div class="flex" style="margin-top:10px">
+            <button id="btnSave" class="primary" type="button">💾 Zapisz</button>
+            <button id="btnCancel" type="button">Anuluj</button>
+            <div class="right small" id="saveInfo"></div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- Cloud panel -->
+  <div id="cloudPanel"><div class="box">
+    <h3>☁️ GitHub Sync</h3>
+    <div class="panel" style="margin-top:8px">
+      <div class="row">
+        <div><label>Owner</label><input id="ghOwner" type="text" placeholder="notsupas"></div>
+        <div><label>Repo</label><input id="ghRepo" type="text" placeholder="some"></div>
+      </div>
+      <div class="row">
+        <div><label>Plik</label><input id="ghPath" type="text" placeholder="models.json"></div>
+        <div><label>Branch</label><input id="ghBranch" type="text" placeholder="main"></div>
+      </div>
+      <div class="row">
+        <div><label>Token (PAT)</label><input id="ghToken" type="password" placeholder="ghp_..."></div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <input id="ghAuto" type="checkbox" />
+          <label for="ghAuto">Auto-zapis po zmianach</label>
+        </div>
+      </div>
+      <div class="flex">
+        <button id="btnCloudSave" type="button">⏫ Zapisz teraz</button>
+        <button id="btnCloudLoad" type="button">⏬ Pobierz z GitHub</button>
+        <button id="btnCloudClose" type="button" class="right">Zamknij</button>
+      </div>
+      <div class="small">Token trzymany lokalnie (localStorage). Po zmianie danych autocommit po ~8 s.</div>
+    </div>
+  </div></div>
+
+  <div id="toast"></div>
+
+  <script>
+  document.addEventListener('DOMContentLoaded', function(){
+    var jsStatus = document.getElementById('jsStatus');
+    function setStatus(s){ jsStatus.textContent = s; }
+
+    // Error toasts
+    window.addEventListener('error', function(e){ var t=document.getElementById('toast'); t.textContent='Błąd JS: '+e.message; t.style.display='block'; setTimeout(function(){t.style.display='none'}, 3000); });
+
+    // Shortcuts
+    function $(s){ return document.querySelector(s); }
+
+    // State
+    var state = { models: [], filters:{q:'',platform:'',hair:'',body:'',eth:''},
+      tags: ['pawg','milf','petite','big ass'],
+      cloud:{owner:'',repo:'',path:'models.json',branch:'main',token:'',auto:false,lastPullUrl:''} };
+
+    function saveLocal(){ localStorage.setItem('mc_models_v1', JSON.stringify(state.models)); localStorage.setItem('mc_cloud_fix', JSON.stringify(state.cloud)); }
+    function loadLocal(){ try{state.models=JSON.parse(localStorage.getItem('mc_models_v1'))||[]}catch(e){} try{Object.assign(state.cloud, JSON.parse(localStorage.getItem('mc_cloud_fix'))||{})}catch(e){} }
+
+    function placeholder(){ return 'data:image/svg+xml;charset=UTF-8,'+encodeURIComponent('<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"800\" height=\"600\"><rect width=\"100%\" height=\"100%\" fill=\"#14182a\"/><text x=\"50%\" y=\"50%\" fill=\"#6b7392\" font-family=\"Arial\" font-size=\"28\" text-anchor=\"middle\" dominant-baseline=\"middle\">Brak obrazu</text></svg>'); }
+
+    function render(){
+      var grid = document.getElementById('grid');
+      var empty = document.getElementById('empty');
+      grid.innerHTML = '';
+      document.getElementById('countInfo').textContent = state.models.length + ' pozycji';
+      if (!state.models.length){ empty.style.display='block'; return; } else empty.style.display='none';
+      state.models.forEach(function(m){
+        var card=document.createElement('div'); card.className='card';
+        var th=document.createElement('div'); th.className='thumb';
+        var img=document.createElement('img'); img.src=m.image||placeholder(); img.alt=m.name||'—'; img.loading='lazy'; th.appendChild(img);
+        var title=document.createElement('div'); title.className='title';
+        var h3=document.createElement('h3'); h3.style.margin='0'; h3.textContent=m.name||'—';
+        var plat=document.createElement('span'); plat.className='chip'; plat.textContent=m.platform||'—';
+        title.appendChild(h3); title.appendChild(plat);
+        var links=document.createElement('div'); links.className='links';
+        function a(lbl, url){ if(!url) return; var el=document.createElement('a'); el.textContent=lbl; el.href=url; el.target='_blank'; el.rel='noopener'; links.appendChild(el); }
+        a('OnlyFans', m.onlyfans); a('Chaturbate', m.chaturbate); a('SimpCity', m.simpcity); a('Instagram', m.insta); a('Twitter/X', m.twitter);
+        var foot=document.createElement('div'); foot.className='foot';
+        var ed=document.createElement('button'); ed.textContent='✏️ Edytuj'; ed.onclick=function(){ openEditor(m.id) };
+        var del=document.createElement('button'); del.textContent='🗑️ Usuń'; del.onclick=function(){ removeModel(m.id) };
+        foot.appendChild(ed); foot.appendChild(del);
+        card.appendChild(th); card.appendChild(title); card.appendChild(links); card.appendChild(foot);
+        grid.appendChild(card);
+      });
+    }
+
+    function openEditor(id){
+      state.editId = id || null;
+      document.getElementById('editor').classList.add('open');
+      document.getElementById('editorTitle').textContent = id ? 'Edytuj modelkę' : 'Dodaj modelkę';
+      var m = null; if (id){ for (var i=0;i<state.models.length;i++){ if (state.models[i].id===id) { m = state.models[i]; break; } } }
+      document.getElementById('f_name').value = (m&&m.name)||'';
+      document.getElementById('f_imgurl').value = (m&&m.image)||'';
+      document.getElementById('f_onlyfans').value = (m&&m.onlyfans)||'';
+      document.getElementById('f_chaturbate').value = (m&&m.chaturbate)||'';
+      document.getElementById('f_simpcity').value = (m&&m.simpcity)||'';
+      document.getElementById('f_insta').value = (m&&m.insta)||'';
+      document.getElementById('f_twitter').value = (m&&m.twitter)||'';
+      document.getElementById('f_platform').value = (m&&m.platform)||'onlyfans';
+    }
+
+    function onSave(){
+      var p = {
+        name: document.getElementById('f_name').value.trim(),
+        image: document.getElementById('f_imgurl').value.trim(),
+        onlyfans: document.getElementById('f_onlyfans').value.trim(),
+        chaturbate: document.getElementById('f_chaturbate').value.trim(),
+        simpcity: document.getElementById('f_simpcity').value.trim(),
+        insta: document.getElementById('f_insta').value.trim(),
+        twitter: document.getElementById('f_twitter').value.trim(),
+        platform: document.getElementById('f_platform').value
+      };
+      if (!p.name){ alert('Podaj nazwę'); return; }
+      if (state.editId){
+        for (var i=0;i<state.models.length;i++){ if (state.models[i].id===state.editId){ state.models[i] = Object.assign({}, state.models[i], p); break; } }
+      } else {
+        p.id = 'id-'+Date.now()+'-'+Math.random().toString(16).slice(2);
+        state.models.unshift(p);
+      }
+      saveLocal();
+      document.getElementById('editor').classList.remove('open');
+      render();
+    }
+
+    function removeModel(id){
+      if (!confirm('Usunąć tę pozycję?')) return;
+      state.models = state.models.filter(function(m){ return m.id !== id; });
+      saveLocal(); render();
+    }
+
+    function exportJson(){
+      var data = { models: state.models };
+      var blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a'); a.href=url; a.download='models.json'; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 1500);
+    }
+    function importJson(file){
+      var r = new FileReader();
+      r.onload = function(){ try{ var j = JSON.parse(r.result); if (Array.isArray(j.models)) state.models = j.models; saveLocal(); render(); alert('Zaimportowano ✅'); }catch(e){ alert('Błąd importu') } };
+      r.readAsText(file);
+    }
+
+    // Bind events
+    document.getElementById('btnToggleEditor').addEventListener('click', function(){ openEditor(null) });
+    document.getElementById('btnSave').addEventListener('click', onSave);
+    document.getElementById('btnCancel').addEventListener('click', function(){ document.getElementById('editor').classList.remove('open') });
+    document.getElementById('btnExport').addEventListener('click', exportJson);
+    document.getElementById('btnImport').addEventListener('click', function(){ document.getElementById('importFile').click() });
+    document.getElementById('importFile').addEventListener('change', function(e){ var f=e.target.files[0]; if(f) importJson(f); e.target.value=''; });
+
+    // Cloud open/close
+    document.getElementById('btnCloud').addEventListener('click', function(){ document.getElementById('cloudPanel').style.display='block' });
+    document.getElementById('btnCloudClose').addEventListener('click', function(){ document.getElementById('cloudPanel').style.display='none' });
+
+    // Minimal cloud demo buttons (no API in this fix page; focus is on buttons working)
+    document.getElementById('btnForcePush').addEventListener('click', function(){ alert('Test: Wymuś zapis kliknięty'); });
+    document.getElementById('btnForcePull').addEventListener('click', function(){ alert('Test: Wymuś pobranie kliknięty'); });
+    document.getElementById('btnDemo').addEventListener('click', function(){
+      state.models=[{id:'d1',name:'Demo One',image:'https://picsum.photos/seed/one/600/400',platform:'onlyfans'}]; saveLocal(); render();
+    });
+    document.getElementById('btnWipe').addEventListener('click', function(){ localStorage.removeItem('mc_models_v1'); state.models=[]; render(); });
+
+    // Init
+    loadLocal(); render();
+    setStatus('✅ JS działa i przyciski podpięte');
+  });
+  </script>
+</body>
+</html>
