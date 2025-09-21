@@ -1,0 +1,890 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Model Collector — prywatna lista (fix)</title>
+  <style>
+    :root{
+      --bg: #0f1220;
+      --card: #171a2b;
+      --muted: #9aa3b2;
+      --text: #e6e9f0;
+      --accent: #7c9cff;
+      --accent-2: #21c7a8;
+      --danger: #ff6b6b;
+      --chip: #22263b;
+      --border: #262b45;
+      --shadow: 0 6px 24px rgba(0,0,0,.35);
+      --radius: 14px;
+      --radius-sm: 10px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Inter, "Helvetica Neue", Arial;
+      background: radial-gradient(1200px 800px at 20% -10%, #1a1f3a 0, rgba(26,31,58,0) 60%), var(--bg);
+      color: var(--text);
+      line-height:1.5;
+    }
+    a{color:var(--accent);text-decoration:none}
+    a:hover{text-decoration:underline}
+    header{
+      position:sticky; top:0; z-index:20;
+      backdrop-filter: blur(8px);
+      background: linear-gradient(180deg, rgba(15,18,32,.85), rgba(15,18,32,.6));
+      border-bottom: 1px solid var(--border);
+    }
+    .wrap{max-width:1100px; margin:0 auto; padding: 18px 16px;}
+    .toolbar{display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:space-between;}
+    .brand{display:flex; gap:10px; align-items:center; font-weight:700; letter-spacing:.3px;}
+    .brand .logo{width:34px; height:34px; border-radius:10px; background: linear-gradient(135deg, #7c9cff, #21c7a8); display:grid; place-items:center; color:#0b0e1a; font-weight:900;}
+    .toolbar .actions{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+    .toolbar .controls{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+    button, .btn, select{
+      appearance:none; border:1px solid var(--border); background:linear-gradient(180deg, #1a1e33, #121527);
+      color:var(--text); padding:10px 14px; border-radius:12px; cursor:pointer;
+      transition:.15s transform ease, .2s border-color;
+      box-shadow: var(--shadow);
+      font-weight:600;
+    }
+    select{padding:10px 36px 10px 12px; background-image: linear-gradient(180deg, #1a1e33, #121527);}
+    button:hover, .btn:hover, select:hover{transform: translateY(-1px); border-color:#33406a}
+    button.primary{background: linear-gradient(180deg, #2b3563, #1a2147); border-color:#3a4a86}
+    button.ghost{background: transparent; box-shadow:none}
+    button.danger{background: linear-gradient(180deg, #4b1922, #341218); border-color:#6d2531}
+    /* Layout */
+    .layout{display:grid; grid-template-columns: 300px 1fr; gap:16px; padding:16px;}
+    @media (max-width: 880px){ .layout{grid-template-columns: 1fr} }
+    /* Panels */
+    .panel{background: var(--card); border:1px solid var(--border); border-radius: var(--radius); padding:14px; box-shadow: var(--shadow);}
+    .panel h2{margin:4px 0 10px 0; font-size:18px}
+    .panel .row{display:grid; gap:10px; grid-template-columns: 1fr 1fr}
+    .panel .row-3{grid-template-columns: 1fr 1fr 1fr}
+    .panel label{font-size:13px; color: var(--muted); display:block; margin-bottom:6px}
+    .panel input[type="text"], .panel input[type="url"], .panel select, .panel input[type="file"]{
+      width:100%; background:#0e1222; border:1px solid var(--border); color: var(--text); padding:10px; border-radius: 10px;
+    }
+    .chips{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px}
+    .chip{background: var(--chip); color: #cbd3ff; font-size:12px; border:1px solid var(--border); padding:6px 10px; border-radius: 999px; display:inline-flex; align-items:center; gap:6px}
+    .chip button{border:none; background:transparent; color:#9aa3b2; padding:0; cursor:pointer; box-shadow:none}
+    /* Grid & List */
+    #grid{display:grid; gap:16px; grid-template-columns: repeat(3, 1fr); transition: .15s ease;}
+    @media (max-width: 1100px){ #grid{grid-template-columns: repeat(2, 1fr)} }
+    @media (max-width: 640px){ #grid{grid-template-columns: 1fr} }
+    #grid[data-view="list"]{ grid-template-columns: 1fr }
+    #grid[data-view="list"] .card{ flex-direction: row }
+    #grid[data-view="list"] .thumb{ width: 240px; height: 180px; overflow:hidden }
+    @media (max-width: 640px){
+      #grid[data-view="list"] .card{ flex-direction: column }
+      #grid[data-view="list"] .thumb{ width: 100%; height: auto }
+    }
+    .card{border:1px solid var(--border); border-radius: var(--radius); overflow:hidden; background: linear-gradient(180deg, #171a2b 0, #14182a 100%); box-shadow: var(--shadow); display:flex; flex-direction:column;}
+    .thumb{position:relative; height: 0; padding-top: 75%; background:#0e1222; overflow:hidden}
+    .thumb img{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block}
+    .card .body{padding:12px; display:flex; flex-direction:column}
+    .title{display:flex; align-items:center; justify-content:space-between; gap:8px}
+    .title h3{margin:0; font-size:18px}
+    .meta{display:flex; gap:8px; flex-wrap:wrap; margin:8px 0}
+    .meta .pill{font-size:12px; padding:4px 8px; border-radius:999px; border:1px solid var(--border); background:#0e1222; color:#c4cae3}
+    .links{display:flex; gap:8px; flex-wrap:wrap; margin:8px 0}
+    .links a{font-size:12px; padding:6px 10px; border-radius:10px; border:1px solid var(--border); background:#0e1222}
+    .tags{display:flex; flex-wrap:wrap; gap:6px; margin-top:6px}
+    .card .foot{padding:12px; display:flex; gap:8px; border-top:1px solid var(--border); margin-top:auto}
+    .card .foot button{flex:1}
+    .empty{opacity:.8; text-align:center; padding:24px 12px; border:1px dashed var(--border); border-radius:12px}
+    .section-title{display:flex; align-items:center; justify-content:space-between}
+    /* Editor */
+    #editor{display:none; margin-top:16px}
+    #editor.open{display:block}
+    #editor h2{margin:0 0 10px 0}
+    .editor-grid{display:grid; gap:12px; grid-template-columns: 1fr 1fr}
+    @media (max-width: 880px){ .editor-grid{grid-template-columns: 1fr} }
+    .divider{height:1px; background:var(--border); margin:10px 0}
+    .small{font-size:12px; color:var(--muted)}
+    .note{padding:8px 10px; border:1px solid var(--border); background:#0e1222; border-radius:10px; font-size:13px}
+    .kbd{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; background:#0e1222; border:1px solid var(--border); padding:2px 6px; border-radius:6px}
+    /* Lock */
+    #lock{ position:fixed; inset:0; background: rgba(5,8,18,.94); display:none; align-items:center; justify-content:center; z-index:50;}
+    #lock.open{ display:flex }
+    .lock-box{ width: min(420px, 92vw); background: var(--card); border:1px solid var(--border); border-radius:16px; padding:18px; box-shadow: var(--shadow); display:flex; flex-direction:column; gap:10px; text-align:center;}
+    .pin-input{ letter-spacing: 8px; font-size: 22px; text-align: center; padding: 12px; border-radius: 12px; background:#0e1222; border:1px solid var(--border); color: var(--text); width:100%;}
+    /* Toast */
+    #toast{position:fixed; right:12px; bottom:12px; background:#11162a; color:#e6e9f0; border:1px solid var(--border); padding:10px 12px; border-radius:10px; font-size:13px; display:none; z-index:60}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap toolbar">
+      <div class="brand">
+        <div class="logo">MC</div>
+        <div>
+          <div>Model Collector</div>
+          <div class="small">Prywatna lista (offline, lokalne dane)</div>
+        </div>
+      </div>
+      <div class="controls">
+        <select id="sort">
+          <option value="created-desc">Sortuj: najnowsze</option>
+          <option value="created-asc">Sortuj: najstarsze</option>
+          <option value="name-asc">Sortuj: A → Z</option>
+          <option value="name-desc">Sortuj: Z → A</option>
+        </select>
+        <button id="btnView" class="ghost" title="Przełącz widok" type="button">🔳 Widok: Siatka</button>
+      </div>
+      <div class="actions">
+        <button class="primary" id="btnToggleEditor" type="button">➕ Dodaj modelkę</button>
+        <button id="btnExport" type="button">⬇️ Eksport</button>
+        <button id="btnImport" type="button">⬆️ Import</button>
+        <input type="file" id="importFile" accept=".json" style="display:none" />
+        <button class="ghost" id="btnDemo" type="button">🔄 Załaduj przykłady</button>
+        <button class="ghost" id="btnSetPin" type="button">🔐 Ustaw PIN</button>
+        <button class="danger" id="btnLock" type="button">🔒 Zablokuj</button>
+        <button class="danger" id="btnWipe" type="button">🗑️ Wyczyść wszystko</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="layout">
+      <aside class="panel" id="filters">
+        <h2>Filtry</h2>
+        <div class="row">
+          <div>
+            <label for="q">Szukaj po nazwie</label>
+            <input id="q" type="text" placeholder="np. username / imię" />
+          </div>
+          <div>
+            <label for="platform">Platforma</label>
+            <select id="platform">
+              <option value="">Dowolna</option>
+              <option value="onlyfans">OnlyFans</option>
+              <option value="chaturbate">Chaturbate</option>
+            </select>
+          </div>
+        </div>
+        <div class="row-3">
+          <div>
+            <label for="hair">Kolor włosów</label>
+            <select id="hair">
+              <option value="">Dowolny</option>
+              <option value="blonde">Blonde</option>
+              <option value="brunette">Brunette</option>
+              <option value="black">Black</option>
+              <option value="redhead">Redhead</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label for="body">Budowa ciała</label>
+            <select id="body">
+              <option value="">Dowolna</option>
+              <option value="slim">Slim</option>
+              <option value="fit">Fit</option>
+              <option value="curvy">Curvy</option>
+            </select>
+            <div class="small">„trochę grubsza” ≈ <b>Curvy</b></div>
+          </div>
+          <div>
+            <label for="eth">„Nacja” / pochodzenie</label>
+            <select id="eth">
+              <option value="">Dowolne</option>
+              <option value="latina">Latina</option>
+              <option value="asian">Asian</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-top:10px">
+          <label>Tagi (kliknij, by filtrować)</label>
+          <div id="filterTags" class="chips"></div>
+        </div>
+        <div style="display:flex; gap:8px; margin-top:12px">
+          <button id="btnClearFilters" type="button">Wyczyść filtry</button>
+        </div>
+
+        <div class="divider"></div>
+        <h2>Zestawy tagów</h2>
+        <div class="small">Wczytaj predefiniowany zestaw tagów, zapisz własny lub usuń niepotrzebny.</div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top:8px">
+          <select id="tagsetSelect"></select>
+          <div style="display:flex; gap:8px; flex-wrap:wrap">
+            <button id="btnTagsetAdd" type="button">➕ Dodaj do listy</button>
+            <button id="btnTagsetReplace" type="button">♻️ Zastąp listę</button>
+          </div>
+        </div>
+        <div style="display:grid; grid-template-columns: 1fr auto; gap:8px; margin-top:8px">
+          <input type="text" id="tagsetName" placeholder="Nazwa nowego zestawu (z bieżących tagów)" />
+          <button id="btnTagsetSave" type="button">💾 Zapisz</button>
+        </div>
+        <div style="display:flex; gap:8px; margin-top:8px">
+          <button id="btnTagsetDelete" class="danger" type="button">🗑️ Usuń zaznaczony zestaw</button>
+        </div>
+
+        <div class="note" style="margin-top:12px">
+          Dane są zapisywane lokalnie w przeglądarce (<span class="kbd">localStorage</span>) – nic nie trafia do sieci.
+        </div>
+      </aside>
+
+      <section>
+        <div class="panel section-title">
+          <h2>Twoja lista</h2>
+          <div class="small" id="countInfo">0 pozycji</div>
+        </div>
+        <div id="grid" class="grid" data-view="grid"></div>
+
+        <div id="empty" class="empty" style="display:none">
+          Brak wyników. Dodaj pierwszą modelkę lub zmień filtry.
+        </div>
+
+        <div id="editor" class="panel">
+          <h2 id="editorTitle">Dodaj / Edytuj modelkę</h2>
+          <div class="editor-grid">
+            <div>
+              <label>Nazwa / nick</label>
+              <input type="text" id="f_name" placeholder="np. username" />
+            </div>
+            <div>
+              <label>Obraz główny (URL) lub wyślij plik</label>
+              <input type="url" id="f_imgurl" placeholder="https://..." />
+              <div style="display:flex; gap:8px; margin-top:6px">
+                <input type="file" id="f_imgfile" accept="image/*" />
+                <span class="small">Uwaga: pliki zapisane są jako miniatury <i>base64</i>.</span>
+              </div>
+            </div>
+
+            <div>
+              <label>OnlyFans (URL)</label>
+              <input type="url" id="f_onlyfans" placeholder="https://onlyfans.com/..." />
+            </div>
+            <div>
+              <label>Chaturbate (URL)</label>
+              <input type="url" id="f_chaturbate" placeholder="https://chaturbate.com/..." />
+            </div>
+
+            <div>
+              <label>Thread na SimpCity (URL)</label>
+              <input type="url" id="f_simpcity" placeholder="https://simpcity.su/..." />
+            </div>
+            <div></div>
+
+            <div>
+              <label>Instagram (URL)</label>
+              <input type="url" id="f_insta" placeholder="https://instagram.com/..." />
+            </div>
+            <div>
+              <label>Twitter/X (URL)</label>
+              <input type="url" id="f_twitter" placeholder="https://twitter.com/..." />
+            </div>
+
+            <div>
+              <label>Kolor włosów</label>
+              <select id="f_hair">
+                <option value="">—</option>
+                <option value="blonde">Blonde</option>
+                <option value="brunette">Brunette</option>
+                <option value="black">Black</option>
+                <option value="redhead">Redhead</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div>
+              <label>Budowa ciała</label>
+              <select id="f_body">
+                <option value="">—</option>
+                <option value="slim">Slim</option>
+                <option value="fit">Fit</option>
+                <option value="curvy">Curvy</option>
+              </select>
+            </div>
+
+            <div>
+              <label>„Nacja” / pochodzenie</label>
+              <select id="f_eth">
+                <option value="">—</option>
+                <option value="latina">Latina</option>
+                <option value="asian">Asian</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div>
+              <label>Platforma</label>
+              <select id="f_platform">
+                <option value="onlyfans">OnlyFans</option>
+                <option value="chaturbate">Chaturbate</option>
+                <option value="both">Obie</option>
+              </select>
+            </div>
+
+            <div style="grid-column:1/-1">
+              <label>Tagi</label>
+              <div class="small">Kliknij, aby dodać/zdjąć. Możesz też dopisać własne, rozdzielone przecinkami.</div>
+              <div id="allTags" class="chips" style="margin-top:6px"></div>
+              <input type="text" id="f_customtags" placeholder="np. pawg, big ass, milf, petite, riding, blowjob" style="margin-top:8px">
+            </div>
+          </div>
+
+          <div class="divider"></div>
+          <div style="display:flex; gap:8px; align-items:center">
+            <button class="primary" id="btnSave" type="button">💾 Zapisz</button>
+            <button id="btnCancel" type="button">Anuluj</button>
+            <div class="small" id="saveInfo"></div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- Lock overlay -->
+  <div id="lock">
+    <div class="lock-box">
+      <h3>🔒 Podaj PIN, aby odblokować</h3>
+      <input id="pinInput" class="pin-input" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="••••" />
+      <div style="display:flex; gap:8px; justify-content:center; margin-top:6px">
+        <button id="btnUnlock" class="primary" type="button">Odblokuj</button>
+        <button id="btnCancelLock" class="ghost" type="button">Anuluj</button>
+      </div>
+      <div class="small" id="lockMsg"></div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <script>
+    // Helpers
+    function showToast(msg){ var t=document.getElementById('toast'); t.textContent=msg; t.style.display='block'; setTimeout(function(){t.style.display='none'}, 2000); }
+    window.addEventListener('error', function(e){ console.log('JS error:', e.message); showToast('Błąd skryptu: '+ e.message); });
+
+    // --- Storage & Data ---
+    var LS_KEY = 'mc_models_v1';
+    var TAG_KEY = 'mc_tags_v1';
+    var TAGSETS_KEY = 'mc_tagsets_v1';
+    var SORT_KEY = 'mc_sort_v1';
+    var VIEW_KEY = 'mc_view_v1';
+    var PIN_HASH_KEY = 'mc_pin_hash_v1';
+    var LOCK_FLAG_KEY = 'mc_locked_v1';
+
+    var IMG_MAX_W = 640;
+    var DEFAULT_TAGS = ['pawg','big ass','milf','petite','riding','blowjob','tattoos','piercing','gamer','cosplay','glasses','natural','busty','shaved','fit','slim','curvy'];
+    var DEFAULT_TAGSETS = {
+      'Body / sylwetka': ['petite','slim','fit','curvy','busty','pawg','big ass','milf'],
+      'Style / klimat': ['cosplay','gamer','glasses','tattoos','piercing','natural'],
+      'Acts / content': ['riding','blowjob'],
+      'Hair / włosy': ['blonde','brunette','black','redhead']
+    };
+
+    var state = {
+      models: [],
+      tags: new Set(),
+      tagSets: {},
+      editId: null,
+      filters: { q:'', platform:'', hair:'', body:'', eth:'', tags: new Set() },
+      sort: { key:'created', dir:'desc' },
+      view: 'grid'
+    };
+
+    function uuid(){
+      if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+      return 'id-' + Date.now() + '-' + Math.random().toString(16).slice(2);
+    }
+
+    function load(){
+      try { state.models = JSON.parse(localStorage.getItem(LS_KEY)) || []; } catch(e){ state.models = []; }
+      try {
+        var t = JSON.parse(localStorage.getItem(TAG_KEY));
+        state.tags = new Set(Array.isArray(t) ? t : DEFAULT_TAGS);
+      } catch(e){ state.tags = new Set(DEFAULT_TAGS); }
+      try {
+        var ts = JSON.parse(localStorage.getItem(TAGSETS_KEY));
+        state.tagSets = ts && typeof ts==='object' ? ts : DEFAULT_TAGSETS;
+      } catch(e){ state.tagSets = DEFAULT_TAGSETS; }
+      try {
+        var s = localStorage.getItem(SORT_KEY) || 'created-desc';
+        var parts = s.split('-'); state.sort = {key:parts[0], dir:parts[1]};
+      } catch(e){ state.sort = {key:'created', dir:'desc'}; }
+      try { state.view = localStorage.getItem(VIEW_KEY) || 'grid'; } catch(e){ state.view='grid'; }
+
+      document.getElementById('sort').value = state.sort.key + '-' + state.sort.dir;
+      setView(state.view, false);
+      renderFilters();
+      renderTagPicker();
+      renderTagSets();
+      applyFilters();
+    }
+
+    function save(){
+      localStorage.setItem(LS_KEY, JSON.stringify(state.models));
+      localStorage.setItem(TAG_KEY, JSON.stringify(Array.from(state.tags)));
+      localStorage.setItem(TAGSETS_KEY, JSON.stringify(state.tagSets));
+      localStorage.setItem(SORT_KEY, state.sort.key + '-' + state.sort.dir);
+      localStorage.setItem(VIEW_KEY, state.view);
+    }
+
+    function fileToDataUrl(file){
+      return new Promise(function(resolve, reject){
+        var img = new Image();
+        var reader = new FileReader();
+        reader.onload = function(e){
+          img.onload = function(){
+            var w = Math.min(img.width, IMG_MAX_W);
+            var h = img.height * (w / img.width);
+            var canvas = document.createElement('canvas');
+            canvas.width = w; canvas.height = h;
+            var ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, w, h);
+            resolve(canvas.toDataURL('image/jpeg', 0.85));
+          };
+          img.onerror = reject;
+          img.src = e.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function $(s){ return document.querySelector(s); }
+    function $$(s){ return Array.prototype.slice.call(document.querySelectorAll(s)); }
+
+    function chip(text, removable, onRemove, active){
+      var span = document.createElement('span');
+      span.className = 'chip';
+      if (active) span.style.outline = '2px solid var(--accent)';
+      span.textContent = text;
+      if (removable){
+        var b = document.createElement('button');
+        b.textContent = '✕';
+        b.title = 'Usuń';
+        b.onclick = onRemove || function(){};
+        span.appendChild(b);
+      }
+      return span;
+    }
+
+    function renderFilters(){
+      var box = $('#filterTags'); box.innerHTML = '';
+      Array.from(state.tags).sort().forEach(function(t){
+        var el = chip(t, false, null, state.filters.tags.has(t));
+        el.style.cursor = 'pointer';
+        el.onclick = function(){
+          if (state.filters.tags.has(t)) state.filters.tags.delete(t);
+          else state.filters.tags.add(t);
+          applyFilters();
+          renderFilters();
+        };
+        box.appendChild(el);
+      });
+    }
+
+    function renderTagPicker(){
+      var box = $('#allTags'); box.innerHTML = '';
+      var current = getEditorTags();
+      Array.from(state.tags).sort().forEach(function(t){
+        var active = current.has(t);
+        var el = chip(t, false, null, active);
+        el.style.cursor = 'pointer';
+        el.onclick = function(){
+          var now = getEditorTags();
+          if (now.has(t)) now.delete(t); else now.add(t);
+          setEditorTags(now);
+          renderTagPicker();
+        };
+        box.appendChild(el);
+      });
+    }
+
+    function renderTagSets(){
+      var sel = $('#tagsetSelect'); sel.innerHTML = '';
+      Object.keys(state.tagSets).sort().forEach(function(name){
+        var opt = document.createElement('option');
+        opt.value = name; opt.textContent = name;
+        sel.appendChild(opt);
+      });
+      if (!sel.value && sel.options.length) sel.value = sel.options[0].value;
+    }
+
+    function getEditorTags(){
+      var raw = $('#f_customtags').dataset.tags || '[]';
+      try { var arr = JSON.parse(raw) } catch(e){ arr = [] }
+      return new Set(arr);
+    }
+    function setEditorTags(set){
+      $('#f_customtags').dataset.tags = JSON.stringify(Array.from(set));
+      if (!$('#editorChips')){
+        var c = document.createElement('div');
+        c.id = 'editorChips'; c.className = 'chips';
+        $('#f_customtags').insertAdjacentElement('afterend', c);
+      }
+      var c = $('#editorChips'); c.innerHTML = '';
+      Array.from(set).sort().forEach(function(t){
+        var el = chip(t, true, function(){ var s = getEditorTags(); s.delete(t); setEditorTags(s); renderTagPicker(); });
+        c.appendChild(el);
+      });
+    }
+
+    function setView(v, persist){
+      state.view = v;
+      var grid = $('#grid'); grid.dataset.view = v;
+      var b = $('#btnView');
+      b.textContent = v==='grid' ? '🔳 Widok: Siatka' : '📃 Widok: Lista';
+      if (persist) save();
+    }
+    function toggleView(){ setView(state.view==='grid' ? 'list' : 'grid', true); }
+
+    function sortItems(items){
+      var key = state.sort.key, dir = state.sort.dir;
+      var sgn = dir==='asc' ? 1 : -1;
+      return items.sort(function(a,b){
+        if (key==='name'){
+          var an=(a.name||'').toLowerCase(), bn=(b.name||'').toLowerCase();
+          if (an<bn) return -1*sgn; if (an>bn) return 1*sgn; return 0;
+        } else {
+          var ac=a.createdAt||0, bc=b.createdAt||0;
+          return (bc - ac) * (dir==='asc' ? -1 : 1);
+        }
+      });
+    }
+
+    function applyFilters(){
+      var f = state.filters;
+      var items = state.models.slice();
+
+      if (f.q){
+        var qq = f.q.toLowerCase();
+        items = items.filter(function(m){ return (m.name||'').toLowerCase().indexOf(qq) > -1; });
+      }
+      if (f.platform){
+        if (f.platform === 'onlyfans') items = items.filter(function(m){ return m.platform==='onlyfans' || m.platform==='both'; });
+        else if (f.platform === 'chaturbate') items = items.filter(function(m){ return m.platform==='chaturbate' || m.platform==='both'; });
+      }
+      if (f.hair) items = items.filter(function(m){ return (m.hair||'') === f.hair; });
+      if (f.body) items = items.filter(function(m){ return (m.body||'') === f.body; });
+      if (f.eth)  items = items.filter(function(m){ return (m.eth||'') === f.eth; });
+      if (f.tags.size){
+        items = items.filter(function(m){
+          var t = new Set(m.tags||[]);
+          var ok = true; f.tags.forEach(function(x){ if (!t.has(x)) ok=false; });
+          return ok;
+        });
+      }
+
+      items = sortItems(items);
+      renderGrid(items);
+    }
+
+    function renderGrid(items){
+      var grid = $('#grid');
+      var empty = $('#empty');
+      $('#countInfo').textContent = items.length + ' ' + (items.length===1 ? 'pozycja' : 'pozycji');
+      grid.innerHTML = '';
+      empty.style.display = items.length ? 'none' : 'block';
+      items.forEach(function(m){
+        var card = document.createElement('div'); card.className = 'card';
+
+        var thumb = document.createElement('div'); thumb.className = 'thumb';
+        var img = document.createElement('img');
+        img.alt = m.name || '—';
+        img.loading = 'lazy';
+        img.src = m.image ? m.image : placeholderSvg();
+        thumb.appendChild(img);
+        card.appendChild(thumb);
+
+        var body = document.createElement('div'); body.className = 'body';
+        var title = document.createElement('div'); title.className = 'title';
+        var h3 = document.createElement('h3'); h3.textContent = m.name || '—';
+        var plat = document.createElement('span'); plat.className = 'pill'; plat.textContent = prettyPlatform(m.platform);
+        title.appendChild(h3); title.appendChild(plat);
+        body.appendChild(title);
+
+        var meta = document.createElement('div'); meta.className = 'meta';
+        if (m.hair) meta.appendChild(pill('Hair', m.hair));
+        if (m.body) meta.appendChild(pill('Body', m.body));
+        if (m.eth)  meta.appendChild(pill('Origin', m.eth));
+        body.appendChild(meta);
+
+        var links = document.createElement('div'); links.className = 'links';
+        if (m.onlyfans) links.appendChild(linkBtn('OnlyFans', m.onlyfans));
+        if (m.chaturbate) links.appendChild(linkBtn('Chaturbate', m.chaturbate));
+        if (m.simpcity) links.appendChild(linkBtn('SimpCity', m.simpcity));
+        if (m.insta) links.appendChild(linkBtn('Instagram', m.insta));
+        if (m.twitter) links.appendChild(linkBtn('Twitter/X', m.twitter));
+        body.appendChild(links);
+
+        if ((m.tags||[]).length){
+          var tags = document.createElement('div'); tags.className = 'tags';
+          m.tags.forEach(function(t){ tags.appendChild(chip(t)); });
+          body.appendChild(tags);
+        }
+
+        card.appendChild(body);
+
+        var foot = document.createElement('div'); foot.className = 'foot';
+        var ed = document.createElement('button'); ed.textContent = '✏️ Edytuj'; ed.type='button'; ed.onclick = function(){ openEditor(m.id); };
+        var del = document.createElement('button'); del.textContent = '🗑️ Usuń'; del.type='button'; del.onclick = function(){ removeModel(m.id); };
+        foot.appendChild(ed); foot.appendChild(del);
+        card.appendChild(foot);
+        grid.appendChild(card);
+      });
+    }
+
+    function pill(label, value){
+      var span = document.createElement('span'); span.className = 'pill'; span.textContent = label + ': ' + value; return span;
+    }
+    function linkBtn(label, url){
+      var a = document.createElement('a'); a.textContent = label; a.href = url; a.target = '_blank'; a.rel='noopener'; return a;
+    }
+    function prettyPlatform(p){
+      return p==='both' ? 'OnlyFans + Chaturbate' : (p ? p.charAt(0).toUpperCase()+p.slice(1) : '—');
+    }
+    function placeholderSvg(){
+      var svg = encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' width='800' height='600'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0%' stop-color='#20263f'/><stop offset='100%' stop-color='#141a2e'/></linearGradient></defs><rect width='100%' height='100%' fill='url(#g)'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' font-family='Arial' font-size='28' fill='#6b7392'>Brak obrazu</text></svg>");
+      return 'data:image/svg+xml;charset=UTF-8,' + svg;
+    }
+
+    function openEditor(id){
+      state.editId = id || null;
+      document.getElementById('editorTitle').textContent = id ? 'Edytuj modelkę' : 'Dodaj modelkę';
+      document.getElementById('editor').classList.add('open');
+      document.getElementById('saveInfo').textContent='';
+      if (id){
+        var m = state.models.find(function(x){ return x.id === id; }) || {};
+        document.getElementById('f_name').value = m.name || '';
+        var imgVal = (m.image && m.image.indexOf('http')===0) ? m.image : '';
+        document.getElementById('f_imgurl').value = imgVal;
+        document.getElementById('f_onlyfans').value = m.onlyfans || '';
+        document.getElementById('f_chaturbate').value = m.chaturbate || '';
+        document.getElementById('f_simpcity').value = m.simpcity || '';
+        document.getElementById('f_insta').value = m.insta || '';
+        document.getElementById('f_twitter').value = m.twitter || '';
+        document.getElementById('f_hair').value = m.hair || '';
+        document.getElementById('f_body').value = m.body || '';
+        document.getElementById('f_eth').value = m.eth || '';
+        document.getElementById('f_platform').value = m.platform || 'onlyfans';
+        setEditorTags(new Set(m.tags||[]));
+      } else {
+        ['f_name','f_imgurl','f_onlyfans','f_chaturbate','f_simpcity','f_insta','f_twitter'].forEach(function(id){ document.getElementById(id).value=''; });
+        document.getElementById('f_hair').value='';
+        document.getElementById('f_body').value='';
+        document.getElementById('f_eth').value='';
+        document.getElementById('f_platform').value='onlyfans';
+        setEditorTags(new Set());
+      }
+      document.getElementById('f_imgfile').value='';
+      window.scrollTo(0,0);
+    }
+
+    function collectEditorData(){
+      return new Promise(function(resolve, reject){
+        var name = document.getElementById('f_name').value.trim();
+        if (!name){ alert('Podaj nazwę / nick'); resolve(null); return; }
+        var image = document.getElementById('f_imgurl').value.trim();
+        var file = document.getElementById('f_imgfile').files[0];
+        function finish(imgVal){
+          var payload = {
+            name: name,
+            image: imgVal,
+            onlyfans: document.getElementById('f_onlyfans').value.trim(),
+            chaturbate: document.getElementById('f_chaturbate').value.trim(),
+            simpcity: document.getElementById('f_simpcity').value.trim(),
+            insta: document.getElementById('f_insta').value.trim(),
+            twitter: document.getElementById('f_twitter').value.trim(),
+            hair: document.getElementById('f_hair').value,
+            body: document.getElementById('f_body').value,
+            eth: document.getElementById('f_eth').value,
+            platform: document.getElementById('f_platform').value,
+            tags: Array.from(getEditorTags())
+          };
+          payload.tags.forEach(function(t){ state.tags.add(t); });
+          save(); renderFilters(); renderTagPicker();
+          resolve(payload);
+        }
+        if (file){
+          fileToDataUrl(file).then(function(data){ finish(data); }).catch(function(){ alert('Nie udało się przetworzyć obrazu'); resolve(null); });
+        } else {
+          finish(image);
+        }
+      });
+    }
+
+    function onSave(){
+      collectEditorData().then(function(payload){
+        if (!payload) return;
+        if (state.editId){
+          var idx = state.models.findIndex(function(m){ return m.id === state.editId; });
+          if (idx >= 0) state.models[idx] = Object.assign({}, state.models[idx], payload);
+        } else {
+          state.models.unshift(Object.assign({ id: uuid(), createdAt: Date.now() }, payload));
+        }
+        save();
+        document.getElementById('saveInfo').textContent = 'Zapisano ✅';
+        document.getElementById('editor').classList.remove('open');
+        applyFilters();
+      });
+    }
+
+    function removeModel(id){
+      if (!confirm('Usunąć tę pozycję?')) return;
+      state.models = state.models.filter(function(m){ return m.id !== id; });
+      save();
+      applyFilters();
+    }
+
+    function loadTagset(name, replace){
+      var set = state.tagSets[name];
+      if (!set) return;
+      if (replace){ state.tags = new Set(set); } else { set.forEach(function(t){ state.tags.add(t); }); }
+      save(); renderFilters(); renderTagPicker();
+    }
+    function saveCurrentAsTagset(name){
+      if (!name){ alert('Podaj nazwę zestawu'); return; }
+      state.tagSets[name] = Array.from(state.tags).sort();
+      save(); renderTagSets();
+      alert('Zapisano zestaw tagów ✅');
+    }
+    function deleteTagset(name){
+      if (!name || !state.tagSets[name]) return;
+      if (!confirm('Usunąć zestaw „'+name+'”?')) return;
+      delete state.tagSets[name];
+      save(); renderTagSets();
+    }
+
+    // Events wiring
+    document.getElementById('btnToggleEditor').addEventListener('click', function(){ openEditor(null); });
+    document.getElementById('btnSave').addEventListener('click', onSave);
+    document.getElementById('btnCancel').addEventListener('click', function(){ document.getElementById('editor').classList.remove('open'); });
+    document.getElementById('btnView').addEventListener('click', toggleView);
+
+    document.getElementById('q').addEventListener('input', function(e){ state.filters.q = e.target.value; applyFilters(); });
+    document.getElementById('platform').addEventListener('change', function(e){ state.filters.platform = e.target.value; applyFilters(); });
+    document.getElementById('hair').addEventListener('change', function(e){ state.filters.hair = e.target.value; applyFilters(); });
+    document.getElementById('body').addEventListener('change', function(e){ state.filters.body = e.target.value; applyFilters(); });
+    document.getElementById('eth').addEventListener('change', function(e){ state.filters.eth = e.target.value; applyFilters(); });
+    document.getElementById('btnClearFilters').addEventListener('click', function(){
+      state.filters = { q:'', platform:'', hair:'', body:'', eth:'', tags:new Set() };
+      document.getElementById('q').value=''; document.getElementById('platform').value=''; document.getElementById('hair').value=''; document.getElementById('body').value=''; document.getElementById('eth').value='';
+      renderFilters(); applyFilters();
+    });
+    document.getElementById('sort').addEventListener('change', function(e){
+      var parts = e.target.value.split('-'); state.sort = {key:parts[0], dir:parts[1]}; save(); applyFilters();
+    });
+
+    // Custom tags typed by user
+    document.getElementById('f_customtags').addEventListener('change', function(e){
+      var extra = e.target.value.split(',').map(function(s){ return s.trim(); }).filter(Boolean);
+      var set = getEditorTags(); extra.forEach(function(t){ set.add(t); });
+      e.target.value = ''; setEditorTags(set); renderTagPicker();
+    });
+
+    // Tag sets UI
+    document.getElementById('btnTagsetAdd').addEventListener('click', function(){ loadTagset(document.getElementById('tagsetSelect').value, false); });
+    document.getElementById('btnTagsetReplace').addEventListener('click', function(){ loadTagset(document.getElementById('tagsetSelect').value, true); });
+    document.getElementById('btnTagsetSave').addEventListener('click', function(){ saveCurrentAsTagset(document.getElementById('tagsetName').value.trim()); });
+    document.getElementById('btnTagsetDelete').addEventListener('click', function(){ deleteTagset(document.getElementById('tagsetSelect').value); });
+
+    // Import/Export
+    document.getElementById('btnExport').addEventListener('click', function(){
+      var data = { models: state.models, tags: Array.from(state.tags), tagSets: state.tagSets, sort: state.sort, view: state.view };
+      var blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a'); a.href = url; a.download = 'model-collector-backup.json';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 5000);
+    });
+    document.getElementById('btnImport').addEventListener('click', function(){ document.getElementById('importFile').click(); });
+    document.getElementById('importFile').addEventListener('change', function(e){
+      var file = e.target.files[0]; if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function(){
+        try {
+          var json = JSON.parse(reader.result);
+          if (Array.isArray(json.models)) state.models = json.models;
+          if (Array.isArray(json.tags)) state.tags = new Set(json.tags);
+          if (json.tagSets && typeof json.tagSets==='object') state.tagSets = json.tagSets;
+          if (json.sort && json.sort.key && json.sort.dir) state.sort = json.sort;
+          if (json.view) state.view = json.view;
+          save(); renderFilters(); renderTagPicker(); renderTagSets(); setView(state.view, false); applyFilters();
+          alert('Zaimportowano dane ✅');
+        } catch(err){ alert('Błąd importu: nieprawidłowy plik'); }
+      };
+      reader.readAsText(file);
+      e.target.value = '';
+    });
+
+    // PIN & Lock
+    function sha256(text){
+      if (window.crypto && crypto.subtle){
+        return crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)).then(function(buf){
+          var arr = Array.prototype.slice.call(new Uint8Array(buf));
+          return arr.map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
+        });
+      } else {
+        var h = 0; for (var i=0;i<text.length;i++){ h = (h<<5) - h + text.charCodeAt(i); h|=0; }
+        return Promise.resolve(String(h));
+      }
+    }
+    function setPin(){
+      var current = localStorage.getItem(PIN_HASH_KEY);
+      if (current){ if (!confirm('PIN jest ustawiony. Czy chcesz go zmienić?')) return; }
+      var p1 = prompt('Ustaw PIN (4–8 cyfr):'); if (p1===null) return;
+      if (!/^\d{4,8}$/.test(p1)){ alert('PIN musi mieć 4–8 cyfr.'); return; }
+      var p2 = prompt('Powtórz PIN:'); if (p2===null) return;
+      if (p1 !== p2){ alert('PIN nie pasuje.'); return; }
+      sha256(p1).then(function(hh){ localStorage.setItem(PIN_HASH_KEY, hh); alert('PIN ustawiony ✅'); });
+    }
+    function showLock(){
+      if (!localStorage.getItem(PIN_HASH_KEY)){ alert('Najpierw ustaw PIN.'); return; }
+      document.getElementById('lock').classList.add('open');
+      document.getElementById('pinInput').value=''; document.getElementById('lockMsg').textContent='';
+      localStorage.setItem(LOCK_FLAG_KEY, '1');
+      setTimeout(function(){ document.getElementById('pinInput').focus(); }, 50);
+    }
+    function hideLock(){
+      document.getElementById('lock').classList.remove('open');
+      localStorage.removeItem(LOCK_FLAG_KEY);
+    }
+    function unlock(){
+      var pin = document.getElementById('pinInput').value.trim();
+      if (!/^\d{4,8}$/.test(pin)){ document.getElementById('lockMsg').textContent='Wpisz 4–8 cyfr.'; return; }
+      sha256(pin).then(function(hh){
+        if (hh === localStorage.getItem(PIN_HASH_KEY)){ hideLock(); } else { document.getElementById('lockMsg').textContent='Błędny PIN.'; }
+      });
+    }
+    document.getElementById('btnSetPin').addEventListener('click', setPin);
+    document.getElementById('btnLock').addEventListener('click', showLock);
+    document.getElementById('btnUnlock').addEventListener('click', unlock);
+    document.getElementById('btnCancelLock').addEventListener('click', hideLock);
+    document.getElementById('pinInput').addEventListener('keypress', function(e){ if (e.key==='Enter') unlock(); });
+
+    document.addEventListener('visibilitychange', function(){
+      if (document.hidden && localStorage.getItem(PIN_HASH_KEY)){ showLock(); }
+    });
+    window.addEventListener('load', function(){ if (localStorage.getItem(LOCK_FLAG_KEY)) showLock(); });
+
+    // Demo & wipe
+    document.getElementById('btnDemo').addEventListener('click', function(){
+      state.tags = new Set(DEFAULT_TAGS);
+      state.tagSets = Object.assign({}, DEFAULT_TAGSETS);
+      state.models = [
+        { id: uuid(), name: 'Demo One', image: placeholderSvg(), onlyfans: 'https://onlyfans.com/demo1', chaturbate: '', simpcity: 'https://simpcity.su/threads/demo1', insta: 'https://instagram.com/demo1', twitter: 'https://twitter.com/demo1', hair: 'blonde', body: 'slim', eth: 'latina', platform:'onlyfans', tags: ['petite','natural'], createdAt: Date.now()-1000*60*60*24*3 },
+        { id: uuid(), name: 'Demo Two', image: placeholderSvg(), onlyfans: '', chaturbate: 'https://chaturbate.com/demo2', simpcity: '', insta: '', twitter: '', hair: 'brunette', body: 'curvy', eth: 'other', platform:'chaturbate', tags: ['milf','big ass'], createdAt: Date.now()-1000*60*60*24*2 },
+        { id: uuid(), name: 'Demo Both', image: placeholderSvg(), onlyfans: 'https://onlyfans.com/demoboth', chaturbate: 'https://chaturbate.com/demoboth', simpcity: '', insta: '', twitter: '', hair: 'black', body: 'fit', eth: 'asian', platform:'both', tags: ['cosplay','glasses'], createdAt: Date.now()-1000*60*60*24 }
+      ];
+      save(); renderFilters(); renderTagPicker(); renderTagSets(); applyFilters();
+      showToast('Załadowano przykłady');
+    });
+
+    document.getElementById('btnWipe').addEventListener('click', function(){
+      if (!confirm('Usunąć wszystkie dane z tej przeglądarki?')) return;
+      localStorage.removeItem(LS_KEY);
+      localStorage.removeItem(TAG_KEY);
+      localStorage.removeItem(TAGSETS_KEY);
+      state.models = []; state.tags = new Set(DEFAULT_TAGS); state.tagSets = Object.assign({}, DEFAULT_TAGSETS);
+      renderFilters(); renderTagPicker(); renderTagSets(); applyFilters();
+      showToast('Wyczyszczono dane');
+    });
+
+    // Init
+    load();
+  </script>
+</body>
+</html>
