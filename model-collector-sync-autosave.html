@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Model Collector — Sync (Auto)</title>
+  <style>
+    :root{--bg:#0f1220;--card:#171a2b;--muted:#9aa3b2;--text:#e6e9f0;--accent:#7c9cff;--border:#262b45;--shadow:0 6px 24px rgba(0,0,0,.35);--radius:14px}
+    *{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Inter,Arial;background:radial-gradient(1200px 800px at 20% -10%,#1a1f3a 0,rgba(26,31,58,0) 60%),var(--bg);color:var(--text)}
+    header{position:sticky;top:0;z-index:20;backdrop-filter:blur(8px);background:linear-gradient(180deg,rgba(15,18,32,.85),rgba(15,18,32,.6));border-bottom:1px solid var(--border)}
+    .wrap{max-width:1100px;margin:0 auto;padding:16px}
+    .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:space-between}
+    .brand{display:flex;gap:10px;align-items:center;font-weight:700}.logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#7c9cff,#21c7a8);display:grid;place-items:center;color:#0b0e1a;font-weight:900}
+    button,select,input[type="text"],input[type="url"],input[type="password"]{appearance:none;border:1px solid var(--border);background:linear-gradient(180deg,#1a1e33,#121527);color:var(--text);padding:10px 12px;border-radius:12px;box-shadow:var(--shadow);font-weight:600}
+    button{cursor:pointer;transition:.15s transform ease,.2s border-color} button:hover{transform:translateY(-1px);border-color:#33406a}
+    button.primary{background:linear-gradient(180deg,#2b3563,#1a2147);border-color:#3a4a86} button.ghost{background:transparent;box-shadow:none}
+    .layout{display:grid;grid-template-columns:320px 1fr;gap:16px;padding:16px} @media(max-width:900px){.layout{grid-template-columns:1fr}}
+    .panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px;box-shadow:var(--shadow)}
+    .row{display:grid;gap:10px;grid-template-columns:1fr 1fr}
+    .grid{display:grid;gap:16px;grid-template-columns:repeat(3,1fr)} @media(max-width:1100px){.grid{grid-template-columns:repeat(2,1fr)}} @media(max-width:640px){.grid{grid-template-columns:1fr}}
+    .card{border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;background:linear-gradient(180deg,#171a2b 0,#14182a 100%);box-shadow:var(--shadow);display:flex;flex-direction:column}
+    .thumb{position:relative;aspect-ratio:4/3;background:#0e1222;overflow:hidden}.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+    .title{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px}.links{display:flex;gap:8px;flex-wrap:wrap;margin:8px 12px}
+    .meta,.tags{display:flex;gap:8px;flex-wrap:wrap;margin:0 12px 8px 12px}.chip{background:#22263b;color:#cbd3ff;font-size:12px;border:1px solid var(--border);padding:6px 10px;border-radius:999px}
+    .foot{padding:12px;display:flex;gap:8px;border-top:1px solid var(--border);margin-top:auto}
+    #editor{display:none;margin-top:16px} #editor.open{display:block}
+    dialog{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:16px;box-shadow:var(--shadow);max-width:720px;width:92vw}
+    dialog::backdrop{background:rgba(0,0,0,.5);backdrop-filter:blur(2px)}
+    .flex{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.right{margin-left:auto}
+    #toast{position:fixed;right:12px;bottom:12px;background:#11162a;color:#e6e9f0;border:1px solid var(--border);padding:10px 12px;border-radius:10px;font-size:13px;display:none;z-index:60}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap toolbar">
+      <div class="brand"><div class="logo">MC</div><div><div>Model Collector</div><div class="small">Sync (GitHub Auto)</div></div></div>
+      <div class="flex">
+        <button class="primary" id="btnToggleEditor" type="button">➕ Dodaj modelkę</button>
+        <button id="btnExport" type="button">⬇️ Eksport</button>
+        <button id="btnImport" type="button">⬆️ Import</button><input type="file" id="importFile" accept=".json" style="display:none" />
+        <button class="ghost" id="btnCloud" type="button">☁️ Chmura</button>
+        <button class="ghost" id="btnDemo" type="button">🔄 Przykłady</button>
+        <button class="ghost" id="btnForcePush" type="button">⏫ Wymuś zapis</button>
+        <button class="ghost" id="btnForcePull" type="button">⏬ Wymuś pobranie</button>
+        <button class="ghost" id="btnWipe" type="button">🗑️ Wyczyść</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="layout">
+      <aside class="panel">
+        <h2>Filtry</h2>
+        <div class="row">
+          <div><label for="q">Szukaj</label><input id="q" type="text" placeholder="np. nick" /></div>
+          <div><label for="platform">Platforma</label><select id="platform"><option value="">Dowolna</option><option value="onlyfans">OnlyFans</option><option value="chaturbate">Chaturbate</option></select></div>
+        </div>
+        <div class="row">
+          <div><label for="hair">Włosy</label><select id="hair"><option value="">Dowolne</option><option value="blonde">Blonde</option><option value="brunette">Brunette</option><option value="black">Black</option><option value="redhead">Redhead</option><option value="other">Other</option></select></div>
+          <div><label for="body">Sylwetka</label><select id="body"><option value="">Dowolna</option><option value="slim">Slim</option><option value="fit">Fit</option><option value="curvy">Curvy</option></select></div>
+        </div>
+        <div class="row">
+          <div><label for="eth">Pochodzenie</label><select id="eth"><option value="">Dowolne</option><option value="latina">Latina</option><option value="asian">Asian</option><option value="other">Other</option></select></div>
+          <div class="right" id="countInfo" style="align-self:end">0 pozycji</div>
+        </div>
+      </aside>
+
+      <section>
+        <div id="grid" class="grid"></div>
+        <div id="empty" class="panel" style="display:none;text-align:center">Brak wyników</div>
+
+        <div id="editor" class="panel">
+          <h2 id="editorTitle">Dodaj / Edytuj modelkę</h2>
+          <div class="row">
+            <div><label>Nazwa / nick</label><input id="f_name" type="text" /></div>
+            <div><label>Obraz (URL)</label><input id="f_imgurl" type="url" placeholder="https://..." /></div>
+          </div>
+          <div class="row">
+            <div><label>OnlyFans</label><input id="f_onlyfans" type="url" placeholder="https://onlyfans.com/..." /></div>
+            <div><label>Chaturbate</label><input id="f_chaturbate" type="url" placeholder="https://chaturbate.com/..." /></div>
+          </div>
+          <div class="row">
+            <div><label>SimpCity</label><input id="f_simpcity" type="url" placeholder="https://simpcity..." /></div>
+            <div><label>Instagram</label><input id="f_insta" type="url" placeholder="https://instagram.com/..." /></div>
+          </div>
+          <div class="row">
+            <div><label>Twitter/X</label><input id="f_twitter" type="url" placeholder="https://twitter.com/..." /></div>
+            <div><label>Platforma</label><select id="f_platform"><option value="onlyfans">OnlyFans</option><option value="chaturbate">Chaturbate</option><option value="both">Obie</option></select></div>
+          </div>
+          <div class="row">
+            <div><label>Włosy</label><select id="f_hair"><option value="">—</option><option value="blonde">Blonde</option><option value="brunette">Brunette</option><option value="black">Black</option><option value="redhead">Redhead</option><option value="other">Other</option></select></div>
+            <div><label>Sylwetka</label><select id="f_body"><option value="">—</option><option value="slim">Slim</option><option value="fit">Fit</option><option value="curvy">Curvy</option></select></div>
+          </div>
+          <div class="row">
+            <div><label>Pochodzenie</label><select id="f_eth"><option value="">—</option><option value="latina">Latina</option><option value="asian">Asian</option><option value="other">Other</option></select></div>
+            <div><label>Tagi (przecinki)</label><input id="f_customtags" type="text" placeholder="pawg, milf, ..." /></div>
+          </div>
+          <div class="flex" style="margin-top:10px">
+            <button id="btnSave" class="primary" type="button">💾 Zapisz</button>
+            <button id="btnCancel" type="button">Anuluj</button>
+            <div class="right small" id="saveInfo"></div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <dialog id="cloud">
+    <form method="dialog">
+      <h3>☁️ GitHub Sync</h3>
+      <div class="panel">
+        <div class="row">
+          <div><label>Owner</label><input id="ghOwner" type="text" placeholder="notsupas"></div>
+          <div><label>Repo</label><input id="ghRepo" type="text" placeholder="some"></div>
+        </div>
+        <div class="row">
+          <div><label>Plik</label><input id="ghPath" type="text" placeholder="models.json"></div>
+          <div><label>Branch</label><input id="ghBranch" type="text" placeholder="main"></div>
+        </div>
+        <div class="row">
+          <div><label>Token (PAT)</label><input id="ghToken" type="password" placeholder="ghp_..."></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <input id="ghAuto" type="checkbox" />
+            <label for="ghAuto">Auto-zapis po zmianach</label>
+          </div>
+        </div>
+        <div class="flex">
+          <button id="btnCloudSave" type="button">⏫ Zapisz teraz</button>
+          <button id="btnCloudLoad" type="button">⏬ Pobierz z GitHub</button>
+          <button value="cancel" class="right">Zamknij</button>
+        </div>
+        <div class="small">Token trzymany jest tylko lokalnie (localStorage). Commity są odkładane (debounce) ~8 s po ostatniej zmianie.</div>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast"></div>
+
+  <script>
+    const LS_KEY='mc_models_v1', TAG_KEY='mc_tags_v1', TAGSETS_KEY='mc_tagsets_v1', CLOUD_KEY='mc_cloud_v2';
+    const $=s=>document.querySelector(s);
+    function toast(m){const t=$('#toast');t.textContent=m;t.style.display='block';setTimeout(()=>t.style.display='none',2600)}
+    function uuid(){return crypto.randomUUID?crypto.randomUUID():'id-'+Date.now()+'-'+Math.random().toString(16).slice(2)}
+    function nowISO(){return new Date().toISOString().replace('T',' ').slice(0,19)}
+
+    let state={models:[],tags:new Set(['pawg','milf','petite','big ass']),tagSets:{Imported:['pawg','milf','petite','big ass']},
+      filters:{q:'',platform:'',hair:'',body:'',eth:''},
+      cloud:{owner:'',repo:'',path:'models.json',branch:'main',token:'',auto:false,lastSha:null,lastPullUrl:''}};
+
+    function saveLocal(){
+      localStorage.setItem(LS_KEY,JSON.stringify(state.models));
+      localStorage.setItem(TAG_KEY,JSON.stringify([...state.tags]));
+      localStorage.setItem(TAGSETS_KEY,JSON.stringify(state.tagSets));
+      localStorage.setItem(CLOUD_KEY,JSON.stringify(state.cloud));
+    }
+    function loadLocal(){
+      try{state.models=JSON.parse(localStorage.getItem(LS_KEY))||[]}catch{}
+      try{state.tags=new Set(JSON.parse(localStorage.getItem(TAG_KEY))||[...state.tags])}catch{}
+      try{state.tagSets=JSON.parse(localStorage.getItem(TAGSETS_KEY))||state.tagSets}catch{}
+      try{Object.assign(state.cloud,JSON.parse(localStorage.getItem(CLOUD_KEY))||{})}catch{}
+      $('#ghOwner').value=state.cloud.owner||''; $('#ghRepo').value=state.cloud.repo||''; $('#ghPath').value=state.cloud.path||'models.json';
+      $('#ghBranch').value=state.cloud.branch||'main'; $('#ghToken').value=state.cloud.token||''; $('#ghAuto').checked=!!state.cloud.auto;
+    }
+
+    function chip(t){const s=document.createElement('span');s.className='chip';s.textContent=t;return s}
+    function pill(k,v){const s=document.createElement('span');s.className='chip';s.textContent=k+': '+v;return s}
+    function placeholder(){return 'data:image/svg+xml;charset=UTF-8,'+encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' width='800' height='600'><rect width='100%' height='100%' fill='#14182a'/><text x='50%' y='50%' fill='#6b7392' font-family='Arial' font-size='28' text-anchor='middle' dominant-baseline='middle'>Brak obrazu</text></svg>")}
+
+    function applyFilters(){
+      const f=state.filters; let items=state.models.slice();
+      if(f.q){const q=f.q.toLowerCase();items=items.filter(m=>(m.name||'').toLowerCase().includes(q))}
+      if(f.platform){items=items.filter(m=>m.platform===f.platform||m.platform==='both')}
+      if(f.hair){items=items.filter(m=>(m.hair||'')===f.hair)}
+      if(f.body){items=items.filter(m=>(m.body||'')===f.body)}
+      if(f.eth){items=items.filter(m=>(m.eth||'')===f.eth)}
+      renderGrid(items);
+    }
+    function renderGrid(items){
+      const grid=$('#grid'), empty=$('#empty'); grid.innerHTML='';
+      $('#countInfo').textContent=items.length+' '+(items.length===1?'pozycja':'pozycji');
+      empty.style.display=items.length?'none':'block';
+      items.forEach(m=>{
+        const card=document.createElement('div');card.className='card';
+        const th=document.createElement('div');th.className='thumb';const img=document.createElement('img');img.src=m.image||placeholder();img.alt=m.name||'—';img.loading='lazy';th.appendChild(img);
+        const title=document.createElement('div');title.className='title';const h3=document.createElement('h3');h3.style.margin='0';h3.textContent=m.name||'—';
+        const plat=document.createElement('span');plat.className='chip';plat.textContent=m.platform||'—';title.append(h3,plat);
+        const meta=document.createElement('div');meta.className='meta'; if(m.hair) meta.appendChild(pill('Hair',m.hair)); if(m.body) meta.appendChild(pill('Body',m.body)); if(m.eth) meta.appendChild(pill('Origin',m.eth));
+        const links=document.createElement('div');links.className='links';
+        function a(lbl,url){if(!url)return;const el=document.createElement('a');el.textContent=lbl;el.href=url;el.target='_blank';el.rel='noopener';links.appendChild(el)}
+        a('OnlyFans',m.onlyfans); a('Chaturbate',m.chaturbate); a('SimpCity',m.simpcity); a('Instagram',m.insta); a('Twitter/X',m.twitter);
+        const tags=document.createElement('div');tags.className='tags';(m.tags||[]).forEach(t=>tags.appendChild(chip(t)));
+        const foot=document.createElement('div');foot.className='foot';const ed=document.createElement('button');ed.textContent='✏️ Edytuj';ed.onclick=()=>openEditor(m.id);
+        const del=document.createElement('button');del.textContent='🗑️ Usuń';del.onclick=()=>removeModel(m.id); foot.append(ed,del);
+        card.append(th,title,meta,links,tags,foot); grid.appendChild(card);
+      });
+    }
+
+    function openEditor(id){
+      state.editId=id||null; $('#editor').classList.add('open'); $('#editorTitle').textContent=id?'Edytuj modelkę':'Dodaj modelkę'; $('#saveInfo').textContent='';
+      const m=id?state.models.find(x=>x.id===id):{};
+      $('#f_name').value=m&&m.name||''; $('#f_imgurl').value=m&&m.image||''; $('#f_onlyfans').value=m&&m.onlyfans||''; $('#f_chaturbate').value=m&&m.chaturbate||'';
+      $('#f_simpcity').value=m&&m.simpcity||''; $('#f_insta').value=m&&m.insta||''; $('#f_twitter').value=m&&m.twitter||''; $('#f_platform').value=m&&m.platform||'onlyfans';
+      $('#f_hair').value=m&&m.hair||''; $('#f_body').value=m&&m.body||''; $('#f_eth').value=m&&m.eth||''; $('#f_customtags').value=(m&&m.tags||[]).join(', ');
+      window.scrollTo({top:0,behavior:'smooth'});
+    }
+    function parseTags(s){return (s||'').split(',').map(x=>x.trim()).filter(Boolean)}
+    function onSave(){
+      const payload={name:$('#f_name').value.trim(),image:$('#f_imgurl').value.trim(),onlyfans:$('#f_onlyfans').value.trim(),chaturbate:$('#f_chaturbate').value.trim(),
+        simpcity:$('#f_simpcity').value.trim(),insta:$('#f_insta').value.trim(),twitter:$('#f_twitter').value.trim(),hair:$('#f_hair').value,body:$('#f_body').value,
+        eth:$('#f_eth').value,platform:$('#f_platform').value,tags:parseTags($('#f_customtags').value),createdAt:Date.now()};
+      if(!payload.name){toast('Podaj nazwę');return}
+      payload.tags.forEach(t=>state.tags.add(t));
+      if(state.editId){const i=state.models.findIndex(m=>m.id===state.editId); if(i>=0) state.models[i]={...state.models[i],...payload};}
+      else{state.models.unshift({id:uuid(),...payload});}
+      saveLocal(); $('#saveInfo').textContent='Zapisano ✅'; $('#editor').classList.remove('open'); applyFilters(); scheduleCloudPush();
+    }
+    function removeModel(id){
+      if(!confirm('Usunąć tę pozycję?')) return;
+      state.models=state.models.filter(m=>m.id!==id);
+      saveLocal(); applyFilters(); scheduleCloudPush();
+    }
+
+    // Filters + toolbar
+    $('#q').addEventListener('input',e=>{state.filters.q=e.target.value;applyFilters()});
+    $('#platform').addEventListener('change',e=>{state.filters.platform=e.target.value;applyFilters()});
+    $('#hair').addEventListener('change',e=>{state.filters.hair=e.target.value;applyFilters()});
+    $('#body').addEventListener('change',e=>{state.filters.body=e.target.value;applyFilters()});
+    $('#eth').addEventListener('change',e=>{state.filters.eth=e.target.value;applyFilters()});
+
+    $('#btnToggleEditor').addEventListener('click',()=>openEditor(null));
+    $('#btnSave').addEventListener('click',onSave);
+    $('#btnCancel').addEventListener('click',()=>$('#editor').classList.remove('open'));
+    $('#btnDemo').addEventListener('click',()=>{state.models=[{id:uuid(),name:'Demo One',image:'https://picsum.photos/seed/one/600/400',platform:'onlyfans'},{id:uuid(),name:'Demo Two',image:'https://picsum.photos/seed/two/600/400',platform:'chaturbate'}]; saveLocal(); applyFilters(); scheduleCloudPush(); toast('Załadowano przykłady')});
+    $('#btnWipe').addEventListener('click',()=>{if(!confirm('Wyczyścić lokalne dane?')) return; localStorage.removeItem(LS_KEY); localStorage.removeItem(TAG_KEY); localStorage.removeItem(TAGSETS_KEY); state.models=[]; saveLocal(); applyFilters(); scheduleCloudPush(); toast('Wyczyszczono')});
+
+    // Import/Export
+    $('#btnExport').addEventListener('click',()=>{const data={models:state.models,tags:[...state.tags],tagSets:state.tagSets,sort:{key:'created',dir:'desc'},view:'grid'}; const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url;a.download='models.json';document.body.appendChild(a);a.click();a.remove(); setTimeout(()=>URL.revokeObjectURL(url),1500)});
+    $('#btnImport').addEventListener('click',()=>$('#importFile').click());
+    $('#importFile').addEventListener('change',e=>{const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{try{const j=JSON.parse(r.result); if(Array.isArray(j.models)) state.models=j.models; if(Array.isArray(j.tags)) state.tags=new Set(j.tags); if(j.tagSets) state.tagSets=j.tagSets; saveLocal(); applyFilters(); scheduleCloudPush(); toast('Zaimportowano ✅')}catch{toast('Błąd importu')}}; r.readAsText(f); e.target.value='' });
+
+    // Cloud dialog
+    const dlg=$('#cloud'); $('#btnCloud').addEventListener('click',()=>dlg.showModal());
+    $('#ghAuto').addEventListener('change',e=>{state.cloud.auto=!!e.target.checked; saveLocal(); if(state.cloud.auto) scheduleCloudPush()});
+    $('#btnForcePush').addEventListener('click',()=>cloudSave(true));
+    $('#btnForcePull').addEventListener('click',cloudLoad);
+
+    async function cloudLoad(){
+      // Use lastPullUrl if set, else build from owner/repo/path
+      const url = state.cloud.lastPullUrl || (state.cloud.owner && state.cloud.repo && state.cloud.path && state.cloud.branch
+        ? `https://raw.githubusercontent.com/${state.cloud.owner}/${state.cloud.repo}/${state.cloud.branch}/${state.cloud.path}` : null);
+      if(!url){toast('Ustaw owner/repo/path/branch lub zapisz najpierw'); return}
+      try{
+        const res=await fetch(url+'?t='+(Date.now()));
+        if(!res.ok) throw new Error('HTTP '+res.status);
+        const j=await res.json();
+        if(Array.isArray(j.models)) state.models=j.models;
+        if(Array.isArray(j.tags)) state.tags=new Set(j.tags);
+        if(j.tagSets) state.tagSets=j.tagSets;
+        saveLocal(); applyFilters(); toast('Pobrano z GitHub ✅');
+        state.cloud.lastPullUrl=url; saveLocal();
+      }catch(e){console.error(e); toast('Nie udało się pobrać')}
+    }
+
+    async function getFileSha(owner,repo,path,branch,token){
+      const url=`https://api.github.com/repos/${owner}/${repo}/contents/${encodeURIComponent(path)}?ref=${encodeURIComponent(branch)}`;
+      const res=await fetch(url,{headers: token?{Authorization:`token ${token}`}:{}});
+      if(res.status===404) return null;
+      if(!res.ok) throw new Error('Get SHA: '+res.status);
+      const j=await res.json(); return j.sha;
+    }
+    function b64(s){return btoa(unescape(encodeURIComponent(s)))}
+
+    let pushTimer=null, pushing=false;
+    function scheduleCloudPush(){
+      if(!state.cloud.auto) return;
+      if(pushTimer) clearTimeout(pushTimer);
+      pushTimer=setTimeout(()=>cloudSave(false), 8000);
+    }
+
+    async function cloudSave(force){
+      const {owner,repo,path,branch,token}=state.cloud;
+      if(!owner||!repo||!path||!branch||!token){ if(force) toast('Brak ustawień GitHub'); return; else return; }
+      if(pushing){ if(force) toast('Trwa zapis...'); return; }
+      pushing=true;
+      try{
+        const sha=await getFileSha(owner,repo,path,branch,token);
+        const api=`https://api.github.com/repos/${owner}/${repo}/contents/${encodeURIComponent(path)}`;
+        const data={models:state.models,tags:[...state.tags],tagSets:state.tagSets,sort:{key:'created',dir:'desc'},view:'grid'};
+        const body={message:`MC autosave ${nowISO()}`,content:b64(JSON.stringify(data,null,2)),branch,sha:sha||undefined};
+        const res=await fetch(api,{method:'PUT',headers:{Authorization:`token ${token}`,'Content-Type':'application/json'},body:JSON.stringify(body)});
+        if(!res.ok) throw new Error('PUT '+res.status);
+        const jr=await res.json();
+        state.cloud.lastSha=jr.content && jr.content.sha || sha || null;
+        state.cloud.lastPullUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${path}`;
+        saveLocal();
+        toast(force?'Zapisano do GitHub ✅':'Auto-zapis do GitHub ✅');
+      }catch(e){console.error(e); toast('Błąd zapisu do GitHub')}
+      finally{ pushing=false; }
+    }
+
+    // init
+    loadLocal(); applyFilters();
+    // optional: autoload from ?data=
+    try{const u=new URL(location.href); const dataUrl=u.searchParams.get('data'); if(dataUrl){ state.cloud.lastPullUrl=dataUrl; saveLocal(); cloudLoad(); }}catch{}
+  </script>
+</body>
+</html>
