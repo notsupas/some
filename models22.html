@@ -1,0 +1,1267 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Model Collector — DELUXE UltraSafe (Fix)</title>
+<style>
+:root{--bg:#0f1220;--card:#171a2b;--muted:#9aa3b2;--text:#e6e9f0;--accent:#7c9cff;--ok:#21c7a8;--warn:#ffbf69;--danger:#ff6b6b;--border:#262b45;--shadow:0 6px 24px rgba(0,0,0,.35);--radius:14px}
+*{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Inter,Arial;background:radial-gradient(1200px 800px at 20% -10%,#1a1f3a 0,rgba(26,31,58,0) 60%),var(--bg);color:var(--text)}
+header{position:sticky;top:0;z-index:20;backdrop-filter:blur(8px);background:linear-gradient(180deg,rgba(15,18,32,.85),rgba(15,18,32,.6));border-bottom:1px solid var(--border)}
+.wrap{max-width:1200px;margin:0 auto;padding:16px}
+.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:space-between}
+.brand{display:flex;gap:10px;align-items:center;font-weight:700}.logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#7c9cff,#21c7a8);display:grid;place-items:center;color:#0b0e1a;font-weight:900}
+button,select,input[type="text"],input[type="url"],input[type="password"]{appearance:none;border:1px solid var(--border);background:linear-gradient(180deg,#1a1e33,#121527);color:var(--text);padding:10px 12px;border-radius:12px;box-shadow:var(--shadow);font-weight:600}
+button{cursor:pointer;transition:.15s transform ease,.2s border-color} button:hover{transform:translateY(-1px);border-color:#33406a}
+button.primary{background:linear-gradient(180deg,#2b3563,#1a2147);border-color:#3a4a86} button.ghost{background:transparent;box-shadow:none}
+.btnlink{display:inline-flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:999px;text-decoration:none;color:#cbd3ff;background:#20243a}
+.btnlink:hover{transform:translateY(-1px);border-color:#3a4a86}
+.layout{display:grid;grid-template-columns:320px 1fr;gap:16px;padding:16px} @media(max-width:900px){.layout{grid-template-columns:1fr}}
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px;box-shadow:var(--shadow)}
+.row{display:grid;gap:10px;grid-template-columns:1fr 1fr}
+.grid{display:grid;gap:16px;grid-template-columns:repeat(3,1fr)} @media(max-width:1100px){.grid{grid-template-columns:repeat(2,1fr)}} @media(max-width:640px){.grid{grid-template-columns:1fr}}
+.card{border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;background:linear-gradient(180deg,#171a2b 0,#14182a 100%);box-shadow:var(--shadow);display:flex;flex-direction:column}
+.thumb{position:relative;aspect-ratio:4/3;background:#0e1222;overflow:hidden}.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.title{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px}.links{display:flex;gap:8px;flex-wrap:wrap;margin:8px 12px}
+.meta,.tags{display:flex;gap:8px;flex-wrap:wrap;margin:0 12px 8px 12px}.chip{background:#22263b;color:#cbd3ff;font-size:12px;border:1px solid var(--border);padding:6px 10px;border-radius:999px;cursor:pointer}
+.foot{padding:12px;display:flex;gap:8px;border-top:1px solid var(--border);margin-top:auto}
+#editor{display:none;margin-top:16px} #editor.open{display:block !important}
+#toast{position:fixed;right:12px;bottom:12px;background:#11162a;color:#e6e9f0;border:1px solid var(--border);padding:10px 12px;border-radius:10px;font-size:13px;display:none;z-index:60}
+#jsReady{position:fixed;left:12px;bottom:12px;background:#11162a;border:1px solid var(--border);padding:8px 10px;border-radius:8px;font-size:12px;z-index:60}
+#cloudOverlay{position:fixed;inset:0;background:rgba(0,0,0,.5);backdrop-filter:blur(2px);display:none;align-items:center;justify-content:center;z-index:100}
+#cloudOverlay.open{display:flex}
+#cloudPanel{width:min(780px,92vw);background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:16px}
+.status{font-size:13px;margin-top:6px}.status.ok{color:#21c7a8} .status.bad{color:#ff6b6b} .status.wait{color:#ffbf69}
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid #fff;border-right-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite; vertical-align:-2px; margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.section-title{display:flex;justify-content:space-between;align-items:center}
+.section-title h3{margin:8px 0}
+
+/* --- Left filters panel polish --- */
+#filtersPanel .row{grid-template-columns:1fr 1fr; gap:12px}
+#filtersPanel > .section-title h2{margin:6px 0 10px 0; font-size:22px}
+#filtersPanel label{display:block; margin-bottom:6px; font-weight:600}
+#filtersPanel input[type="text"],
+#filtersPanel select{width:100%}
+#filtersPanel .control-inline{display:flex; align-items:center; gap:6px}
+#filtersPanel .control-inline > button{padding:8px 10px; border-radius:10px; line-height:1; min-width:34px}
+#filtersPanel .chips{display:flex; flex-wrap:wrap; gap:6px}
+.chip{white-space:nowrap} /* prevent "big ass" splitting */
+#filtersPanel .panel{padding:10px 12px}
+#filtersPanel .panel .chips{margin-top:6px}
+
+
+/* --- Blur toggle --- */
+.thumb img{ transition: filter .2s ease }
+body.blur-on .thumb img{ filter: blur(14px) brightness(0.85) }
+
+
+/* Vocab overlay styling */
+#vocabOverlay{position:fixed;inset:0;background:rgba(0,0,0,.5);backdrop-filter:blur(2px);display:none;align-items:center;justify-content:center;z-index:100}
+#vocabOverlay.open{display:flex}
+#vocabPanel h4{margin:8px 0}
+#vocabPanel .chips .chip{cursor:default}
+#vocabPanel .chips .chip .act{margin-left:8px; cursor:pointer; opacity:.85}
+
+/* align vocab inputs */ #vocabPanel input, #vocabPanel select{width:100%}
+
+/* === UX/UI polish: Left Filters Panel === */
+#filtersPanel{padding:16px 16px 18px}
+#filtersPanel .section-title h2{font-size:24px; margin:6px 0 8px 0}
+#filtersPanel .row{gap:12px}
+#filtersPanel label{display:block;margin:6px 0 6px 2px;font-weight:700;letter-spacing:.2px}
+#filtersPanel .hint{color:var(--muted); font-size:12px; margin:4px 2px 6px 2px}
+#filtersPanel input[type="text"],
+#filtersPanel select{width:100%; border-radius:14px}
+#filtersPanel .chips{gap:8px; margin-top:8px}
+#filtersPanel .panel{border-radius:12px; padding:12px}
+
+/* Zestawy tagów (jeśli są) — bardziej czytelne tytuły i odstępy */
+#filtersPanel h3{font-size:18px; margin:10px 0 6px 2px}
+#filtersPanel .small.note{color:var(--muted); display:block; margin:0 0 6px 2px}
+
+/* === Smaller link buttons under model names === */
+.links .btnlink{font-size:13px; padding:6px 10px; border-radius:12px}
+.links{gap:10px}
+
+
+/* === Favorites, Views, Selection === */
+.view-controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.select-indicator{position:absolute;top:8px;left:8px;z-index:5}
+.card.sel{outline:2px solid var(--accent)}
+.star{cursor:pointer;font-size:18px;user-select:none}
+.star.on{color:#ffd166}
+/* views */
+body.view-compact .grid{grid-template-columns:repeat(4,1fr)}
+@media(max-width:1200px){ body.view-compact .grid{grid-template-columns:repeat(3,1fr)} }
+@media(max-width:800px){ body.view-compact .grid{grid-template-columns:repeat(2,1fr)} }
+body.view-list .grid{grid-template-columns:1fr}
+body.view-list .thumb{aspect-ratio:16/9}
+body.view-list .links .btnlink{font-size:12px;padding:5px 8px}
+/* top action bar for selection */
+#bulkBar{position:sticky;top:58px;z-index:30;display:none;gap:8px;align-items:center;background:rgba(15,18,32,.9);padding:8px;border:1px solid var(--border);border-radius:12px;margin-bottom:10px}
+#bulkBar.show{display:flex}
+#bulkBar input{min-width:200px}
+/* Sort menu */
+#sortSelect{min-width:170px}
+
+
+/* --- Tabs for platforms --- */
+.tabs{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.tabbtn{padding:8px 12px;border:1px solid var(--border);border-radius:999px;background:#20243a;color:#cbd3ff;cursor:pointer}
+.tabbtn.active{background:#2b3563;border-color:#3a4a86;color:#fff}
+
+
+/* --- Star-only filter toggle --- */
+#favToggle{border-radius:999px;padding:6px 10px}
+#favToggle.active{background:#2b3563;border-color:#3a4a86;color:#fff}
+
+/* --- Quick Edit popup --- */
+#quickEditOverlay{position:fixed;inset:0;background:rgba(0,0,0,.5);backdrop-filter:blur(2px);display:none;align-items:center;justify-content:center;z-index:120}
+#quickEditOverlay.open{display:flex}
+#quickEditPanel{width:min(720px,92vw);background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:16px}
+#quickEditPanel .row{display:grid;gap:10px;grid-template-columns:1fr 1fr}
+#quickEditPanel label{display:block;margin-bottom:6px;font-weight:600}
+
+/* --- Lightbox --- */
+#lightbox{position:fixed;inset:0;background:rgba(0,0,0,.9);display:none;align-items:center;justify-content:center;z-index:140}
+#lightbox.open{display:flex}
+#lightbox img{max-width:95vw;max-height:90vh;border-radius:12px}
+
+/* --- Panic Hide --- */
+#panicMask{position:fixed;inset:0;background:#0f1220;display:none;z-index:150}
+#panicMask.show{display:block}
+
+/* Smaller pencil icon next to title */
+.title .pencil{cursor:pointer;opacity:.85;font-size:14px;margin-left:8px}
+.title .pencil:hover{opacity:1}
+
+
+/* --- Tag Organizer --- */
+#tagOrgOverlay{position:fixed;inset:0;background:rgba(0,0,0,.5);backdrop-filter:blur(2px);display:none;align-items:center;justify-content:center;z-index:130}
+#tagOrgOverlay.open{display:flex}
+#tagOrgPanel{width:min(900px,95vw);background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:16px}
+#tagOrgPanel .row{display:grid;gap:10px;grid-template-columns:1fr 1fr}
+#tagOrgPanel label{display:block;margin-bottom:6px;font-weight:600}
+#tagList{max-height:320px;overflow:auto;border:1px solid var(--border);border-radius:8px;padding:8px}
+#tagList .tagrow{display:flex;justify-content:space-between;gap:8px;padding:6px 4px;border-bottom:1px dashed var(--border)}
+#suggestList{max-height:220px;overflow:auto;border:1px solid var(--border);border-radius:8px;padding:8px}
+#suggestList .sug{padding:6px 4px;border-bottom:1px dashed var(--border)}
+.smallmuted{color:var(--muted);font-size:12px}
+
+
+/* --- Dark selects & options --- */
+select{background:#20243a;color:#cbd3ff;border:1px solid var(--border);border-radius:14px}
+select:focus{outline:2px solid rgba(124,156,255,.35)}
+select option, select optgroup{background:#101424;color:#cbd3ff}
+/* Safari fallback: make dropdown text dark-friendly */
+::-webkit-details-marker{color:#cbd3ff}
+
+
+/* Collapsible tag presets */
+details#tagPresets{margin-top:10px}
+details#tagPresets[open]>summary .small{display:none}
+details#tagPresets summary:hover{opacity:.95}
+
+
+/* Selection mode visibility + button active state */
+.select-indicator{ display:none }
+body.select-mode .select-indicator{ display:block }
+button.active{ background:#2b3563; border-color:#3a4a86; color:#fff }
+
+
+/* Force checkbox visibility in select mode */
+body.select-mode .select-indicator{ display:block !important }
+
+</style>
+</head>
+<body onload="init()">
+<div id="jsReady">⏳ Ładowanie JS…</div>
+<header>
+  <div class="wrap toolbar">
+    <div class="brand"><div class="logo">MC</div><div><div>Model Collector</div><div class="small">DELUXE UltraSafe (Fix)</div></div></div>
+    <div class="flex view-controls">
+      <div class="tabs"><button type="button" id="tabOF" class="tabbtn active" onclick="setTab('onlyfans')">OnlyFans</button><button type="button" id="tabCB" class="tabbtn" onclick="setTab('chaturbate')">Chaturbate</button></div>
+      <button class="primary" onclick="openEditor(null)" type="button">➕ Dodaj modelkę</button>
+      
+<select id="sortSelect" onchange="applyFilters()">
+  <option value="edited_desc">Ostatnio edytowane ⬇</option>
+  <option value="name_asc">Nazwa A→Z</option>
+  <option value="name_desc">Nazwa Z→A</option>
+  <option value="fav_desc">Ulubione na górze</option>
+</select>
+<button onclick="toggleView()" type="button">🧩 Widok</button>
+<button id="btnSelectMode" onclick="toggleSelectMode()" type="button">🖱️ Zaznacz</button>
+<button onclick="undo()" type="button">↩️ Cofnij</button>
+<div class="control-inline">
+  <input id="quickUrl" type="text" placeholder="Szybkie dodanie z URL (wklej link)" style="width:280px" />
+  <button onclick="quickAddFromUrl()" type="button">➕ Dodaj z URL</button>
+</div>
+
+      <button onclick="exportJson()" type="button">⬇️ Eksport</button>
+      <button onclick="document.getElementById('importFile').click()" type="button">⬆️ Import</button>
+      <input type="file" id="importFile" accept=".json" onchange="onImport(this)" style="display:none" />
+      <button class="ghost" onclick="openCloud()" type="button">☁️ Chmura</button>
+      <button class="ghost" onclick="openPinMenu()" type="button">🔒 PIN</button>
+      <button class="ghost" id="btnBlur" onclick="toggleBlur()" type="button">👁️‍🗨️ Wyłącz blur</button>
+      <button class="ghost" onclick="clearFilters()" type="button">🧹 Wyczyść filtry</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="layout">
+    <aside class="panel" id="filtersPanel">
+      <div class="section-title">
+        <h2>Filtry</h2>
+        <button id="favToggle" type="button" class="ghost" onclick="toggleFavFilter()">⭐ Tylko ulubione</button>
+          <button type="button" class="ghost" onclick="openTagOrganizer()">🏷️ Tagi</button>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button type="button" class="ghost" onclick="openVocab()">⚙️ Słownik</button>
+          <div class="small" id="countInfo">0 pozycji</div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div><label for="q">Szukaj</label><input id="q" type="text" oninput="onFilter()" placeholder="np. nick" /></div>
+        <div><label for="platform">Platforma</label><select id="platform" onchange="onFilter()"><option value="">Dowolna</option><option value="onlyfans">OnlyFans</option><option value="chaturbate">Chaturbate</option><option value="both">Obie</option></select></div>
+      </div>
+
+      <div class="row">
+        <div><label for="hair">Włosy</label><div class="control-inline"><select id="hair" onchange="onFilter()"><option value="">Dowolne</option><option value="blonde">Blonde</option><option value="brunette">Brunette</option><option value="black">Black</option><option value="redhead">Redhead</option><option value="other">Other</option></select><button type="button" onclick="addOption('hair')">＋</button><button type="button" onclick="removeOption('hair')">－</button></div></div>
+        <div><label for="body">Budowa ciała</label><div class="control-inline"><select id="body" onchange="onFilter()"><option value="">Dowolna</option><option value="fit">Fit</option><option value="curvy">Curvy</option><option value="thicc">Thicc</option></select><button type="button" onclick="addOption('body')">＋</button><button type="button" onclick="removeOption('body')">－</button></div><div class="hint">„trochę grubsza” ≈ Curvy</div></div>
+      </div>
+
+      <div class="row">
+        <div><label for="eth">„Nacja” / pochodzenie</label><select id="eth" onchange="onFilter()"><option value="">Dowolne</option><option value="latina">Latina</option><option value="asian">Asian</option><option value="other">Other</option></select></div>
+        <div>
+          <label>Tagi (kliknij, by filtrować)</label>
+          <div id="filterTags" class="chips"></div>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:12px">
+        <div class="section-title"><details id="tagPresets" open="false"><summary style="cursor:pointer;list-style:none;"><h3 style="display:inline">Zestawy tagów</h3> <span class="small" style="opacity:.8">(opcjonalne – kliknij, aby rozwinąć)</span></summary>
+<h3>Zestawy tagów</h3><span class="small">zestaw zapisany — użyj przycisków powyżej</span></div>
+        <div id="presetTags" class="chips">
+</div></div></details>
+    </aside>
+
+    <section>
+      <div id="bulkBar">
+        <span>Masowe tagowanie:</span>
+        <input id="bulkTags" type="text" placeholder="tag1, tag2" />
+        <button type="button" onclick="bulkAddTags()">+ Dodaj tagi</button>
+        <button type="button" onclick="bulkRemoveTags()">− Usuń tagi</button>
+        <span id="bulkCount" class="small"></span>
+      </div>
+      <div id="grid" class="grid"></div>
+      <div id="empty" class="panel" style="display:none;text-align:center">Brak wyników</div>
+
+      <div id="editor" class="panel">
+        <h2 id="editorTitle">Dodaj / Edytuj modelkę</h2>
+        <div class="row">
+          <div><label>Nazwa / nick</label><input id="f_name" type="text" /></div>
+          <div><label>Obraz (URL)</label><input id="f_imgurl" type="url" placeholder="https://..." /></div>
+        </div>
+        <div class="row">
+          <div><label>OnlyFans</label><input id="f_onlyfans" type="url" placeholder="https://onlyfans.com/..." /></div>
+          <div><label>Chaturbate</label><input id="f_chaturbate" type="url" placeholder="https://chaturbate.com/..." /></div>
+        </div>
+        <div class="row">
+          <div><label>SimpCity</label><input id="f_simpcity" type="url" placeholder="https://simpcity..." /></div>
+          <div><label>Instagram</label><input id="f_insta" type="url" placeholder="https://instagram.com/..." /></div>
+        </div>
+        <div class="row">
+          <div><label>Twitter/X</label><input id="f_twitter" type="url" placeholder="https://twitter.com/..." /></div>
+          <div><label>Platforma</label><select id="f_platform"><option value="onlyfans">OnlyFans</option><option value="chaturbate">Chaturbate</option><option value="both">Obie</option></select></div>
+        </div>
+        <div class="row">
+          <div><label>Włosy</label><div class="control-inline"><select id="f_hair"><option value="">—</option><option value="blonde">Blonde</option><option value="brunette">Brunette</option><option value="black">Black</option><option value="redhead">Redhead</option><option value="other">Other</option></select><button type="button" onclick="addOption('f_hair')">＋</button><button type="button" onclick="removeOption('f_hair')">－</button></div></div>
+          <div><label>Sylwetka</label><div class="control-inline"><select id="f_body"><option value="">—</option><option value="fit">Fit</option><option value="curvy">Curvy</option><option value="thicc">Thicc</option></select><button type="button" onclick="addOption('f_body')">＋</button><button type="button" onclick="removeOption('f_body')">－</button></div></div>
+        </div>
+        <div class="row">
+          <div><label>Pochodzenie</label><select id="f_eth"><option value="">—</option><option value="latina">Latina</option><option value="asian">Asian</option><option value="other">Other</option></select></div>
+          <div><label>Tagi (przecinki)</label><input id="f_customtags" type="text" placeholder="pawg, milf, ..." list="tagSuggestions" />
+<div id="tagPicker" class="chips" style="margin-top:6px"></div></div>
+        </div>
+        <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+          <button class="primary" onclick="onSave()" type="button">💾 Zapisz</button>
+          <button onclick="closeEditor()" type="button">Anuluj</button>
+          <div id="saveInfo" class="small"></div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+<!-- Scroll buttons -->
+<button id="btnScrollTop" type="button" onclick="window.scrollTo({top:0,behavior:'smooth'})" style="position:fixed;right:14px;bottom:74px;z-index:80;border-radius:999px;padding:10px 12px">⬆️&nbsp;Góra</button>
+<button id="btnScrollBottom" type="button" onclick="window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'})" style="position:fixed;right:14px;bottom:24px;z-index:80;border-radius:999px;padding:10px 12px">⬇️&nbsp;Dół</button>
+
+<datalist id="tagSuggestions"></datalist>
+</main>
+
+
+<div id="vocabOverlay">
+  <div id="vocabPanel" class="panel">
+    <h3>⚙️ Słownik (opcje włosy / sylwetka / pochodzenie)</h3>
+    <div class="row">
+      <div>
+        <label>Kategoria</label>
+        <select id="vocabKind" onchange="renderVocabLists()">
+          <option value="hair">Włosy</option>
+          <option value="body">Sylwetka</option>
+          <option value="eth">Pochodzenie</option>
+        </select>
+      </div>
+      <div>
+        <label>Dodaj nową wartość</label>
+        <div class="control-inline">
+          <input id="vocabNew" type="text" placeholder="np. auburn / athletic / thicc" />
+          <button type="button" onclick="vocabAdd()">Dodaj</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:10px">
+      <div>
+        <h4>Aktywne</h4>
+        <div id="vocabActive" class="chips"></div>
+      </div>
+      <div>
+        <h4>Wycofane</h4>
+        <div id="vocabDeprecated" class="chips"></div>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:10px">
+      <div>
+        <label>Scal (alias):</label>
+        <div class="control-inline">
+          <input id="vocabFrom" type="text" placeholder="np. slim" />
+          <span>→</span>
+          <input id="vocabTo" type="text" placeholder="np. thicc" />
+          <button type="button" onclick="vocabAlias()">Utwórz alias</button>
+        </div>
+        <div class="small">Alias spowoduje, że dane <i>From</i> zostaną traktowane i zapisane jako <i>To</i>.</div>
+      </div>
+      <div style="display:flex; align-items:flex-end">
+        <button type="button" onclick="closeVocab()">Zamknij</button>
+      </div>
+    </div>
+    <div id="vocabStatus" class="status">Gotowy.</div>
+  </div>
+</div>
+
+
+<div id="quickEditOverlay">
+  <div id="quickEditPanel" class="panel">
+    <h3>Szybka edycja</h3>
+    <div class="row">
+      <div><label>OnlyFans</label><input id="qe_onlyfans" type="url" placeholder="https://onlyfans.com/..."></div>
+      <div><label>Chaturbate</label><input id="qe_chaturbate" type="url" placeholder="https://chaturbate.com/..."></div>
+    </div>
+    <div class="row">
+      <div><label>SimpCity</label><input id="qe_simpcity" type="url" placeholder="https://simpcity..."></div>
+      <div><label>Instagram</label><input id="qe_insta" type="url" placeholder="https://instagram.com/..."></div>
+    </div>
+    <div class="row">
+      <div><label>Twitter/X</label><input id="qe_twitter" type="url" placeholder="https://twitter.com/..."></div>
+      <div><label>Tagi (przecinki)</label><input id="qe_tags" type="text" list="tagSuggestions" placeholder="pawg, thicc, milf">
+<div id="tagPickerQE" class="chips" style="margin-top:6px"></div></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button type="button" class="primary" onclick="quickEditSave()">Zapisz</button>
+      <button type="button" onclick="closeQuickEdit()">Zamknij</button>
+      <div id="qe_info" class="small"></div>
+    </div>
+  </div>
+</div>
+
+<div id="lightbox" onclick="closeLightbox()"><img id="lightboxImg" src="" alt=""></div>
+<div id="panicMask"></div>
+
+
+<div id="tagOrgOverlay">
+  <div id="tagOrgPanel" class="panel">
+    <h3>🏷️ Porządkowanie tagów</h3>
+    <div class="row">
+      <div>
+        <label>Statystyki (kliknij, aby wstawić do „Do”)</label>
+        <div id="tagList"></div>
+      </div>
+      <div>
+        <label>Proponowane scalanie / duplikaty</label>
+        <div id="suggestList"></div>
+      </div>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <div>
+        <label>Scal tagi: „Z” → „Do”</label>
+        <div class="control-inline">
+          <input id="mergeFrom" type="text" list="tagSuggestions" placeholder="np. big_ass">
+          <span>→</span>
+          <input id="mergeTo" type="text" list="tagSuggestions" placeholder="np. big ass">
+          <button type="button" onclick="tagMerge()">Scal</button>
+        </div>
+        <div class="smallmuted">Scalenie zamieni wszystkie wystąpienia „Z” na „Do”.</div>
+      </div>
+      <div>
+        <label>Auto-clean formatu</label>
+        <div class="control-inline">
+          <button type="button" onclick="tagAutoclean()">✳️ Standaryzuj (małe litery, spacje zamiast _)</button>
+          <button type="button" onclick="applyCanonical()">🔁 Zastosuj słownik synonimów</button>
+        </div>
+        <div class="smallmuted">Przykład: <code>Big_Ass</code> → <code>big ass</code>, <code>bj</code> → <code>blowjob</code>.</div>
+      </div>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <div>
+        <label>Auto-tag z atrybutów</label>
+        <div><input id="autoHair" type="checkbox" checked> <label for="autoHair">dodaj włosy jako tag</label></div>
+        <div><input id="autoBody" type="checkbox" checked> <label for="autoBody">dodaj sylwetkę jako tag</label></div>
+        <div><input id="autoEth" type="checkbox" checked> <label for="autoEth">dodaj pochodzenie jako tag</label></div>
+        <div class="smallmuted">Działa na wszystkie lub tylko zaznaczone karty (jeśli użyjesz trybu zaznaczania).</div>
+      </div>
+      <div style="display:flex;align-items:end;gap:8px">
+        <button type="button" onclick="applyAutoTags()">➕ Zastosuj auto-tagi</button>
+        <button type="button" onclick="closeTagOrganizer()">Zamknij</button>
+      </div>
+    </div>
+    <div id="tagOrgStatus" class="status">Gotowy.</div>
+  </div>
+</div>
+
+<div id="cloudOverlay">
+  <div id="cloudPanel" class="panel">
+    <h3>☁️ GitHub Sync</h3>
+    <div class="row">
+      <div><label>Owner</label><input id="ghOwner" type="text" value="notsupas"></div>
+      <div><label>Repo</label><input id="ghRepo" type="text" value="some"></div>
+    </div>
+    <div class="row">
+      <div><label>Plik</label><input id="ghPath" type="text" value="models.json"></div>
+      <div><label>Branch</label><input id="ghBranch" type="text" value="main"></div>
+    </div>
+    <div class="row">
+      <div><label>Token (PAT)</label><input id="ghToken" type="password" placeholder="ghp_..."></div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <input id="ghAuto" type="checkbox" onchange="toggleAuto(this)" />
+        <label for="ghAuto">Auto-zapis po zmianach</label>
+      </div>
+    </div>
+    <div class="row" style="margin-top:6px">
+      <button onclick="showCommits()" type="button">🕑 Commity</button>
+      <button onclick="cloudSave()" type="button">⏫ Zapisz teraz</button>
+      <button onclick="cloudLoad()" type="button">⏬ Pobierz</button>
+      <button onclick="closeCloud()" type="button" class="right">Zamknij</button>
+    </div>
+    <div id="cloudStatus" class="status">Gotowy.</div>
+    <div id="commitList" class="small" style="margin-top:8px"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+var state={models:[],tags:new Set(['pawg','milf','petite','big ass','cosplay','glasses','riding','blowjob','pawg','milf']),tagSets:{Imported:['pawg','milf','petite','big ass']},filters:{q:'',platform:'',hair:'',body:'',eth:'',tags:new Set()},cloud:{owner:'notsupas',repo:'some',path:'models.json',branch:'main',token:'',auto:false,lastPullUrl:''}};
+var pushTimer=null;
+var LS_MODELS='mc_models_du_ultra_fix', LS_TAGS='mc_tags_du_ultra_fix', LS_TAGSETS='mc_tagsets_du_ultra_fix', LS_CLOUD='mc_cloud_du_ultra_fix';
+
+
+var LS_BLUR='mc_blur_default';
+function applyBlurFromState(){
+  var on = (localStorage.getItem(LS_BLUR) ?? 'on') === 'on'; // default ON
+  document.body.classList.toggle('blur-on', on);
+  var b = document.getElementById('btnBlur');
+  if (b) b.textContent = on ? '👁️‍🗨️ Wyłącz blur' : '🙈 Włącz blur';
+}
+function toggleBlur(){
+  var on = !document.body.classList.contains('blur-on');
+  document.body.classList.toggle('blur-on', on);
+  localStorage.setItem(LS_BLUR, on ? 'on' : 'off');
+  var b = document.getElementById('btnBlur');
+  if (b) b.textContent = on ? '👁️‍🗨️ Wyłącz blur' : '🙈 Włącz blur';
+}
+
+
+// === Vocab Registry (hair/body/eth) ===
+var LS_VOCAB='mc_vocab_registry';
+var vocab = {
+  hair: { active:['blonde','brunette','black','redhead','other'], deprecated:[], aliases:{} },
+  body: { active:['fit','curvy','thicc'],                      deprecated:['slim'], aliases:{'slim':'thicc'} },
+  eth:  { active:['latina','asian','other'],                   deprecated:[], aliases:{} }
+};
+function loadVocab(){ try{ var j=JSON.parse(localStorage.getItem(LS_VOCAB)); if(j) vocab=j; }catch(e){} }
+function saveVocab(){ localStorage.setItem(LS_VOCAB, JSON.stringify(vocab)); }
+function normalizeValue(kind, val){ if(!val) return val; var d=vocab[kind]; if(d && d.aliases && d.aliases[val]) return d.aliases[val]; return val; }
+function normalizeAllModels(){
+  state.models = state.models.map(function(m){
+    if(m.hair) m.hair = normalizeValue('hair', m.hair);
+    if(m.body) m.body = normalizeValue('body', m.body);
+    if(m.eth)  m.eth  = normalizeValue('eth',  m.eth);
+    return m;
+  });
+}
+// Rebuild filter selects from vocab
+function buildFilterSelectsFromVocab(){
+  function optCap(v){ return v.charAt(0).toUpperCase()+v.slice(1); }
+  var selHair=document.getElementById('hair');
+  if(selHair){
+    var cur=selHair.value||'';
+    selHair.innerHTML='<option value="">Dowolne</option>' +
+      vocab.hair.active.map(v=>`<option value="${v}">${optCap(v)}</option>`).join('') +
+      (vocab.hair.deprecated.length?('<optgroup label="(wycofane)">'+vocab.hair.deprecated.map(v=>`<option value="${v}">${v}</option>`).join('')+'</optgroup>'):''); 
+    selHair.value=cur;
+  }
+  var selBody=document.getElementById('body');
+  if(selBody){
+    var curB=selBody.value||'';
+    selBody.innerHTML='<option value="">Dowolna</option>' +
+      vocab.body.active.map(v=>`<option value="${v}">${optCap(v)}</option>`).join('') +
+      (vocab.body.deprecated.length?('<optgroup label="(wycofane)">'+vocab.body.deprecated.map(v=>`<option value="${v}">${v}</option>`).join('')+'</optgroup>'):''); 
+    selBody.value=curB;
+  }
+  var selEth=document.getElementById('eth');
+  if(selEth){
+    var curE=selEth.value||'';
+    selEth.innerHTML='<option value="">Dowolne</option>' +
+      vocab.eth.active.map(v=>`<option value="${v}">${optCap(v)}</option>`).join('') +
+      (vocab.eth.deprecated.length?('<optgroup label="(wycofane)">'+vocab.eth.deprecated.map(v=>`<option value="${v}">${v}</option>`).join('')+'</optgroup>'):''); 
+    selEth.value=curE;
+  }
+}
+// Overlay handlers
+function openVocab(){ document.getElementById('vocabOverlay').classList.add('open'); renderVocabLists(); document.getElementById('vocabStatus').textContent='Gotowy.'; }
+function closeVocab(){ document.getElementById('vocabOverlay').classList.remove('open'); }
+function renderVocabLists(){
+  var kind=document.getElementById('vocabKind').value;
+  var act=document.getElementById('vocabActive'); var dep=document.getElementById('vocabDeprecated');
+  act.innerHTML=''; dep.innerHTML='';
+  (vocab[kind].active||[]).slice().sort().forEach(function(v){
+    var c=document.createElement('span'); c.className='chip'; c.textContent=v;
+    var x=document.createElement('span'); x.className='act'; x.textContent='(wycofaj)';
+    x.onclick=function(){ // move to deprecated
+      vocab[kind].active = vocab[kind].active.filter(x=>x!==v);
+      if(!vocab[kind].deprecated.includes(v)) vocab[kind].deprecated.push(v);
+      saveVocab(); buildFilterSelectsFromVocab(); renderVocabLists();
+    };
+    c.appendChild(x); act.appendChild(c);
+  });
+  (vocab[kind].deprecated||[]).slice().sort().forEach(function(v){
+    var c=document.createElement('span'); c.className='chip'; c.textContent=v;
+    var x=document.createElement('span'); x.className='act'; x.textContent='(przywróć)';
+    x.onclick=function(){ // move to active
+      vocab[kind].deprecated = vocab[kind].deprecated.filter(x=>x!==v);
+      if(!vocab[kind].active.includes(v)) vocab[kind].active.push(v);
+      saveVocab(); buildFilterSelectsFromVocab(); renderVocabLists();
+    };
+    c.appendChild(x); dep.appendChild(c);
+  });
+}
+function vocabAdd(){
+  var kind=document.getElementById('vocabKind').value;
+  var val=(document.getElementById('vocabNew').value||'').trim(); if(!val) return;
+  if(!vocab[kind].active.includes(val)) vocab[kind].active.push(val);
+  vocab[kind].deprecated = (vocab[kind].deprecated||[]).filter(x=>x!==val);
+  saveVocab(); buildFilterSelectsFromVocab(); renderVocabLists(); document.getElementById('vocabNew').value='';
+}
+function vocabAlias(){
+  var kind=document.getElementById('vocabKind').value;
+  var from=(document.getElementById('vocabFrom').value||'').trim();
+  var to=(document.getElementById('vocabTo').value||'').trim();
+  if(!from || !to){ document.getElementById('vocabStatus').textContent='Podaj From i To.'; document.getElementById('vocabStatus').className='status bad'; return; }
+  if(!vocab[kind].aliases) vocab[kind].aliases={};
+  vocab[kind].aliases[from]=to;
+  // ensure 'to' is active
+  if(!vocab[kind].active.includes(to)) vocab[kind].active.push(to);
+  // normalize existing data
+  normalizeAllModels(); saveLocal(); applyFilters();
+  saveVocab(); buildFilterSelectsFromVocab(); renderVocabLists();
+  document.getElementById('vocabStatus').textContent='Alias zapisany i dane znormalizowane ✅';
+  document.getElementById('vocabStatus').className='status ok';
+}
+
+
+// --- Platform Tabs ---
+var currentTab = localStorage.getItem('mc_tab') || 'onlyfans';
+function setTab(t){
+  currentTab = (t==='chaturbate') ? 'chaturbate' : 'onlyfans';
+  localStorage.setItem('mc_tab', currentTab);
+  // Visual
+  var of=document.getElementById('tabOF'), cb=document.getElementById('tabCB');
+  if(of && cb){ of.classList.toggle('active', currentTab==='onlyfans'); cb.classList.toggle('active', currentTab==='chaturbate'); }
+  applyFilters();
+}
+
+
+// --- Star-only filter ---
+var favOnly=false;
+function toggleFavFilter(){
+  favOnly=!favOnly;
+  var b=document.getElementById('favToggle');
+  if(b) b.classList.toggle('active', favOnly);
+  applyFilters();
+}
+
+// --- Quick Edit ---
+var quickEditId=null;
+function openQuickEdit(id){
+  quickEditId=id;
+  var m=state.models.find(x=>x.id===id);
+  if(!m) return;
+  document.getElementById('qe_onlyfans').value=m.onlyfans||'';
+  document.getElementById('qe_chaturbate').value=m.chaturbate||'';
+  document.getElementById('qe_simpcity').value=m.simpcity||'';
+  document.getElementById('qe_insta').value=m.insta||'';
+  document.getElementById('qe_twitter').value=m.twitter||'';
+  document.getElementById('qe_tags').value=(m.tags||[]).join(', ');
+  document.getElementById('qe_info').textContent='';
+  document.getElementById('quickEditOverlay').classList.add('open');
+}
+function closeQuickEdit(){ document.getElementById('quickEditOverlay').classList.remove('open'); }
+function quickEditSave(){
+  var m=state.models.find(x=>x.id===quickEditId); if(!m) return;
+  pushHistory();
+  m.onlyfans=document.getElementById('qe_onlyfans').value.trim();
+  m.chaturbate=document.getElementById('qe_chaturbate').value.trim();
+  m.simpcity=document.getElementById('qe_simpcity').value.trim();
+  m.insta=document.getElementById('qe_insta').value.trim();
+  m.twitter=document.getElementById('qe_twitter').value.trim();
+  m.tags=parseTags(document.getElementById('qe_tags').value);
+  m.updatedAt=Date.now();
+  m.tags.forEach(function(t){ state.tags.add(t) });
+  saveLocal(); renderFilterTags(); updateTagDatalist(); initTagPickers(); applyFilters();
+  document.getElementById('qe_info').textContent='Zapisano ✅';
+  setTimeout(closeQuickEdit, 400);
+  if(state.cloud.auto) scheduleCloudPush();
+}
+
+// --- Tag suggestions datalist ---
+function updateTagDatalist(){
+  var dl=document.getElementById('tagSuggestions'); if(!dl) return;
+  var tags=Array.from(state.tags||[]).sort();
+  dl.innerHTML = tags.map(function(t){ return '<option value="'+t+'"></option>'; }).join('');
+}
+
+// --- Lightbox ---
+function openLightbox(src){ var lb=document.getElementById('lightbox'); var im=document.getElementById('lightboxImg'); im.src=src; lb.classList.add('open'); }
+function closeLightbox(){ document.getElementById('lightbox').classList.remove('open'); }
+
+// --- Fuzzy search (name + tags + note + links) ---
+function fuzzyContains(hay, needle){
+  hay=(hay||'').toLowerCase(); needle=(needle||'').toLowerCase();
+  if(!needle) return true;
+  if(hay.indexOf(needle)>-1) return true;
+  if(needle.length>=3){
+    for(var i=0;i<needle.length;i++){
+      var n=needle.slice(0,i)+needle.slice(i+1);
+      if(n && hay.indexOf(n)>-1) return true;
+    }
+  }
+  try{
+    var reStr = needle.split('').map(function(ch){ return ch.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }).join('.*');
+    var re=new RegExp(reStr);
+    if(re.test(hay)) return true;
+  }catch(e){}
+  return false;
+}
+function buildSearchText(m){
+  var parts=[m.name||'', (m.tags||[]).join(' '), m.note||'', m.onlyfans||'', m.chaturbate||'', m.simpcity||'', m.insta||'', m.twitter||''];
+  return parts.join(' ').toLowerCase();
+}
+
+// --- PIN-lock + Panic Hide ---
+var LS_PIN='mc_pin_hash'; var LS_PIN_REQ='mc_pin_req';
+function setPin(){
+  var p=prompt('Ustaw PIN (4-12 znaków):'); if(!p) return;
+  localStorage.setItem(LS_PIN, btoa(unescape(encodeURIComponent(p))));
+  localStorage.setItem(LS_PIN_REQ, '1');
+  alert('PIN ustawiony. Będzie wymagany przy wejściu.');
+}
+function clearPin(){
+  localStorage.removeItem(LS_PIN); localStorage.removeItem(LS_PIN_REQ);
+  alert('PIN wyłączony.');
+}
+function openPinMenu(){
+  var mode = prompt('PIN: wpisz \"set\" aby ustawić/zmienić, \"off\" aby wyłączyć');
+  if(!mode) return;
+  if(mode.toLowerCase()==='set') setPin();
+  else if(mode.toLowerCase()==='off') clearPin();
+}
+function pinCheckOnLoad(){
+  var req=localStorage.getItem(LS_PIN_REQ)==='1';
+  var h=localStorage.getItem(LS_PIN)||'';
+  if(req && h){
+    for(var k=0;k<3;k++){
+      var p=prompt('Podaj PIN'); if(p===null) break;
+      var ok=(btoa(unescape(encodeURIComponent(p)))===h);
+      if(ok) return true;
+      alert('Błędny PIN');
+    }
+    document.getElementById('panicMask').classList.add('show');
+    return false;
+  }
+  return true;
+}
+document.addEventListener('keydown',function(e){
+  if(e.key==='h' || e.key==='H'){ var m=document.getElementById('panicMask'); m.classList.toggle('show'); }
+  if(e.key==='Escape'){ closeQuickEdit(); closeLightbox(); }
+});
+
+
+// --- Tag picker (list + type) ---
+function _renderPicker(intoEl, filterText, onPick){
+  var all=Array.from(state.tags||[]).sort();
+  var f=(filterText||'').trim().toLowerCase();
+  if(f) all=all.filter(function(t){ return t.toLowerCase().indexOf(f)>-1; });
+  intoEl.innerHTML = (all.slice(0,50).map(function(t){
+    var s=document.createElement('span'); s.className='chip'; s.textContent=t;
+    s.onclick=function(){ onPick(t); };
+    return s.outerHTML;
+  }).join('')) || '<span class="small">Brak podpowiedzi</span>';
+}
+function initTagPickers(){
+  var inp=document.getElementById('f_customtags');
+  var box=document.getElementById('tagPicker');
+  if(inp && box){
+    var pick=function(t){
+      var cur=(inp.value||'').trim();
+      var list=cur?cur.split(',').map(function(x){return x.trim();}).filter(Boolean):[];
+      if(list.indexOf(t)===-1) list.push(t);
+      inp.value=list.join(', ');
+      _renderPicker(box, '', pick);
+      inp.focus();
+    };
+    inp.addEventListener('input', function(){ _renderPicker(box, inp.value.split(',').pop(), pick); });
+    inp.addEventListener('focus', function(){ _renderPicker(box, '', pick); });
+    _renderPicker(box, '', pick);
+  }
+  var inp2=document.getElementById('qe_tags');
+  var box2=document.getElementById('tagPickerQE');
+  if(inp2 && box2){
+    var pick2=function(t){
+      var cur=(inp2.value||'').trim();
+      var list=cur?cur.split(',').map(function(x){return x.trim();}).filter(Boolean):[];
+      if(list.indexOf(t)===-1) list.push(t);
+      inp2.value=list.join(', ');
+      _renderPicker(box2, '', pick2);
+      inp2.focus();
+    };
+    inp2.addEventListener('input', function(){ _renderPicker(box2, inp2.value.split(',').pop(), pick2); });
+    inp2.addEventListener('focus', function(){ _renderPicker(box2, '', pick2); });
+    _renderPicker(box2, '', pick2);
+  }
+}
+
+function init(){
+  var b=document.getElementById('jsReady'); b.textContent='✅ JS działa';
+  loadLocal();
+  renderFilterTags();
+  renderPresetTags();
+  applyFilters();
+  applyBlurFromState();
+}
+
+function toast(msg){ var t=document.getElementById('toast'); t.textContent=msg; t.style.display='block'; setTimeout(function(){t.style.display='none'},2600) }
+function saveLocal(){ localStorage.setItem(LS_MODELS, JSON.stringify(state.models)); localStorage.setItem(LS_TAGS, JSON.stringify(Array.from(state.tags))); localStorage.setItem(LS_TAGSETS, JSON.stringify(state.tagSets)); localStorage.setItem(LS_CLOUD, JSON.stringify(state.cloud)); }
+function loadLocal(){ try{state.models=JSON.parse(localStorage.getItem(LS_MODELS))||[]}catch(e){} try{state.tags=new Set(JSON.parse(localStorage.getItem(LS_TAGS))||Array.from(state.tags))}catch(e){} try{state.tagSets=JSON.parse(localStorage.getItem(LS_TAGSETS))||state.tagSets}catch(e){} try{Object.assign(state.cloud, JSON.parse(localStorage.getItem(LS_CLOUD))||state.cloud)}catch(e){} }
+
+function placeholder(){return 'data:image/svg+xml;charset=UTF-8,'+encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' width='800' height='600'><rect width='100%' height='100%' fill='#14182a'/><text x='50%' y='50%' fill='#6b7392' font-family='Arial' font-size='28' text-anchor='middle' dominant-baseline='middle'>Brak obrazu</text></svg>")}
+function chip(text, active){ var s=document.createElement('span'); s.className='chip'+(active?' active':''); s.textContent=text; s.onclick=function(){ if(state.filters.tags.has(text)) state.filters.tags.delete(text); else state.filters.tags.add(text); renderFilterTags(); applyFilters();
+  applyBlurFromState(); }; return s; }
+function pill(label, value){ var span=document.createElement('span'); span.className='chip'; span.textContent=label+': '+value; return span; }
+function btnLink(href, label){ if(!href) return null; var a=document.createElement('a'); a.className='btnlink'; a.href=href; a.target='_blank'; a.rel='noopener'; a.textContent=label; return a; }
+
+function renderFilterTags(){ var box=document.getElementById('filterTags'); box.innerHTML=''; Array.from(state.tags).sort().forEach(function(t){ box.appendChild(chip(t, state.filters.tags.has(t))); }); }
+function renderPresetTags(){
+  var preset=['pawg','big ass','milf','petite','riding','blowjob','latina','asian','fit','slim','curvy','blonde','brunette','black','redhead'];
+  var box=document.getElementById('presetTags'); box.innerHTML='';
+  preset.forEach(function(t){
+    var c=chip(t, state.filters.tags.has(t));
+    c.onclick=function(){ if(state.tags.has(t)===false) state.tags.add(t); if(state.filters.tags.has(t)) state.filters.tags.delete(t); else state.filters.tags.add(t); renderFilterTags(); updateTagDatalist(); renderPresetTags(); initTagPickers(); applyFilters();
+  applyBlurFromState(); };
+    box.appendChild(c);
+  });
+}
+
+function onFilter(){ state.filters.q=document.getElementById('q').value.toLowerCase(); state.filters.platform=document.getElementById('platform').value; state.filters.hair=document.getElementById('hair').value; state.filters.body=document.getElementById('body').value; state.filters.eth=document.getElementById('eth').value; applyFilters();
+  applyBlurFromState(); }
+function clearFilters(){ document.getElementById('q').value=''; document.getElementById('platform').value=''; document.getElementById('hair').value=''; document.getElementById('body').value=''; document.getElementById('eth').value=''; state.filters={q:'',platform:'',hair:'',body:'',eth:'',tags:new Set()}; renderFilterTags(); updateTagDatalist(); renderPresetTags(); initTagPickers(); applyFilters();
+  applyBlurFromState(); }
+
+function applyFilters(){
+  var items=state.models.slice(); var f=state.filters;
+  if(f.q) items=items.filter(function(m){ return fuzzyContains(buildSearchText(m), f.q); });
+  if(f.platform) items=items.filter(function(m){ return m.platform===f.platform || m.platform==='both' });
+  // tab constraint
+  if(currentTab==='onlyfans') items=items.filter(function(m){ return (m.platform==='onlyfans' || m.platform==='both'); });
+  else if(currentTab==='chaturbate') items=items.filter(function(m){ return (m.platform==='chaturbate' || m.platform==='both'); });
+  if(f.hair) items=items.filter(function(m){ return (m.hair||'')===f.hair });
+  if(f.body) items=items.filter(function(m){ return (m.body||'')===f.body });
+  if(f.eth) items=items.filter(function(m){ return (m.eth||'')===f.eth });
+  if(f.tags.size) items=items.filter(function(m){ var t=new Set(m.tags||[]); var ok=true; state.filters.tags.forEach(function(x){ if(!t.has(x)) ok=false; }); return ok; });
+  items = sortItems(items);
+    if(favOnly) items=items.filter(function(m){ return !!m.fav; });
+    renderGrid(items);
+    try{ ensureSelectionUI(); }catch(e){}
+}
+
+function renderGrid(items){
+  var grid=document.getElementById('grid'), empty=document.getElementById('empty'); grid.innerHTML='';
+  document.getElementById('countInfo').textContent=items.length+' '+(items.length===1?'pozycja':'pozycji');
+  empty.style.display=items.length?'none':'block';
+  items.forEach(function(m){
+    var card=document.createElement('div'); card.className='card';
+    var th=document.createElement('div'); th.className='thumb';
+      var sel=document.createElement('input'); sel.type='checkbox'; sel.className='select-indicator'; sel.checked=!!m.__sel; sel.onclick=function(e){ e.stopPropagation(); m.__sel=sel.checked; card.classList.toggle('sel', m.__sel); updateBulkBar(); }; card.appendChild(sel);
+    var img=document.createElement('img'); img.src=m.image||placeholder(); img.alt=m.name||'—'; img.loading='lazy'; img.style.cursor='zoom-in'; img.onclick=function(e){ e.stopPropagation(); openLightbox(img.src); }; th.appendChild(img);
+    var title=document.createElement('div'); title.className='title';
+    var h3=document.createElement('h3'); h3.style.margin='0'; h3.textContent=m.name||'—';
+      var pencil=document.createElement('span'); pencil.className='pencil'; pencil.textContent='✏️'; pencil.title='Szybka edycja'; pencil.onclick=function(e){ e.stopPropagation(); openQuickEdit(m.id); };
+      var star=document.createElement('span'); star.className='star'+(m.fav?' on':''); star.textContent=m.fav?'★':'☆'; star.title='Ulubione'; star.onclick=function(e){ e.stopPropagation(); pushHistory(); m.fav=!m.fav; star.classList.toggle('on', m.fav); star.textContent=m.fav?'★':'☆'; saveLocal(); applyFilters(); if(state.cloud.auto) scheduleCloudPush(); };
+    var plat=document.createElement('span'); plat.className='chip'; plat.textContent=(m.platform==='both'?'OF+CB':(m.platform||'—'));
+    title.appendChild(h3); title.appendChild(pencil); title.appendChild(star); title.appendChild(plat);
+    var meta=document.createElement('div'); meta.className='meta';
+    if(m.hair) meta.appendChild(pill('Hair', m.hair)); if(m.body) meta.appendChild(pill('Body', m.body)); if(m.eth) meta.appendChild(pill('Origin', m.eth));
+    var links=document.createElement('div'); links.className='links';
+    [ ['OnlyFans',m.onlyfans], ['Chaturbate',m.chaturbate], ['SimpCity',m.simpcity], ['Instagram',m.insta], ['Twitter/X',m.twitter] ].forEach(function(p){ var a=btnLink(p[1],p[0]); if(a) links.appendChild(a); });
+    var tags=document.createElement('div'); tags.className='tags'; renderTagsCompact(tags, m.tags||[]);
+    var foot=document.createElement('div'); foot.className='foot';
+    var ed=document.createElement('button'); ed.textContent='✏️ Edytuj'; ed.setAttribute('type','button'); ed.setAttribute('data-id', m.id||''); ed.setAttribute('onclick','editClick(this)');
+    var del=document.createElement('button'); del.textContent='🗑️ Usuń'; del.onclick=function(){ removeModel(m.id) };
+    foot.appendChild(ed); foot.appendChild(del);
+    card.appendChild(th); card.appendChild(title); card.appendChild(meta); card.appendChild(links); card.appendChild(tags); card.appendChild(foot);
+    card.onclick=function(){ if(selectMode){ m.__sel=!m.__sel; card.classList.toggle('sel', m.__sel); var cb=card.querySelector('.select-indicator'); if(cb) cb.checked=!!m.__sel; updateBulkBar(); } };
+    // ensure checkbox exists
+(function(){
+  var cb = card.querySelector('input.select-indicator');
+  if(!cb){
+    cb = document.createElement('input');
+    cb.type='checkbox';
+    cb.className='select-indicator';
+    cb.style.position='absolute';
+    cb.style.top='8px';
+    cb.style.left='8px';
+    cb.style.zIndex='5';
+    cb.onclick=function(e){ e.stopPropagation(); m.__sel=cb.checked; card.classList.toggle('sel', m.__sel); updateBulkBar(); };
+    card.appendChild(cb);
+  }
+  cb.style.display = selectMode ? 'block' : '';
+  cb.checked = !!m.__sel;
+})(); 
+console.log('rendered card', m.id, 'selectMode=', selectMode);
+grid.appendChild(card);
+  });
+}
+
+// --- Editor ---
+function openEditor(id){
+  console.log('openEditor clicked; id=', id);
+  state.editId = id || null;
+  var ed = document.getElementById('editor');
+  // Force show editor, regardless of styles
+  ed.classList.add('open');
+  ed.removeAttribute('hidden');
+  ed.style.display = 'block';
+  ed.style.visibility = 'visible';
+  ed.style.opacity = '1';
+  ed.style.position = 'relative';
+  ed.style.zIndex = '10';
+  document.getElementById('editorTitle').textContent = id ? 'Edytuj modelkę' : 'Dodaj modelkę';
+  document.getElementById('saveInfo').textContent = '';
+  var m = null; if (id){ for (var i=0;i<state.models.length;i++){ if(state.models[i].id===id){ m=state.models[i]; break; } } }
+  document.getElementById('f_name').value = (m&&m.name)||'';
+  document.getElementById('f_imgurl').value = (m&&m.image)||'';
+  document.getElementById('f_onlyfans').value = (m&&m.onlyfans)||'';
+  document.getElementById('f_chaturbate').value = (m&&m.chaturbate)||'';
+  document.getElementById('f_simpcity').value = (m&&m.simpcity)||'';
+  document.getElementById('f_insta').value = (m&&m.insta)||'';
+  document.getElementById('f_twitter').value = (m&&m.twitter)||'';
+  document.getElementById('f_platform').value = (m&&m.platform)||'onlyfans';
+  document.getElementById('f_hair').value = (m&&m.hair)||'';
+  document.getElementById('f_body').value = (m&&m.body)||'';
+  document.getElementById('f_eth').value  = (m&&m.eth)||'';
+  document.getElementById('f_customtags').value = ((m&&m.tags)||[]).join(', ');
+  // Scroll editor into view strongly
+  try { ed.scrollIntoView({behavior:'smooth', block:'start'}); } catch(_) { window.location.hash = '#editor'; }
+  // Visual flash to show it's open
+  ed.style.outline = '3px solid rgba(124,156,255,.6)';
+  setTimeout(function(){ ed.style.outline=''; }, 600);
+}
+function closeEditor(){ var ed=document.getElementById('editor'); ed.classList.remove('open'); ed.style.display='none'; }
+function parseTags(s){ return (s||'').split(',').map(function(x){return x.trim()}).filter(Boolean) }
+function onSave(){
+  var p={ name:document.getElementById('f_name').value.trim(), image:document.getElementById('f_imgurl').value.trim(), onlyfans:document.getElementById('f_onlyfans').value.trim(), chaturbate:document.getElementById('f_chaturbate').value.trim(), simpcity:document.getElementById('f_simpcity').value.trim(), insta:document.getElementById('f_insta').value.trim(), twitter:document.getElementById('f_twitter').value.trim(), hair:document.getElementById('f_hair').value, body:document.getElementById('f_body').value, eth:document.getElementById('f_eth').value, platform:document.getElementById('f_platform').value, tags:parseTags(document.getElementById('f_customtags').value), createdAt:Date.now() };
+  if(!p.name){ toast('Podaj nazwę'); return; }
+  p.tags.forEach(function(t){ state.tags.add(t) });
+  if(state.editId){ for(var i=0;i<state.models.length;i++){ if(state.models[i].id===state.editId){ state.models[i]=Object.assign({}, state.models[i], p, {updatedAt:Date.now()}); break; } } } else { p.id='id-'+Date.now()+'-'+Math.random().toString(16).slice(2); state.models.unshift(Object.assign(p,{createdAt:Date.now(),updatedAt:Date.now()})); }
+  saveLocal(); document.getElementById('saveInfo').textContent='Zapisano ✅'; closeEditor(); renderFilterTags(); updateTagDatalist(); renderPresetTags(); initTagPickers(); applyFilters();
+  applyBlurFromState(); if(state.cloud.auto) scheduleCloudPush();
+}
+
+// --- CRUD helpers ---
+function removeModel(id){ if(!confirm('Usunąć tę pozycję?')) return; state.models=state.models.filter(function(m){return m.id!==id}); saveLocal(); applyFilters();
+  applyBlurFromState(); toast('Usunięto ✅'); if(state.cloud.auto) scheduleCloudPush(); }
+function exportJson(){ var data={models:state.models, tags:Array.from(state.tags), tagSets:state.tagSets, sort:{key:'created',dir:'desc'}, view:'grid'}; var blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); var url=URL.createObjectURL(blob); var a=document.createElement('a'); a.href=url; a.download='models.json'; a.click(); setTimeout(function(){URL.revokeObjectURL(url)},1500); }
+function onImport(input){ var f=input.files[0]; if(!f) return; var r=new FileReader(); r.onload=function(){ try{ var j=JSON.parse(r.result); if(Array.isArray(j.models)) state.models=j.models; if(Array.isArray(j.tags)) state.tags=new Set(j.tags); if(j.tagSets) state.tagSets=j.tagSets; saveLocal(); renderFilterTags(); updateTagDatalist(); renderPresetTags(); initTagPickers(); applyFilters();
+  applyBlurFromState(); toast('Zaimportowano ✅'); if(state.cloud.auto) scheduleCloudPush(); }catch(e){ toast('Błąd importu') } }; r.readAsText(f); input.value=''; }
+
+// --- Cloud (unchanged) ---
+function openCloud(){ document.getElementById('ghOwner').value=state.cloud.owner||'notsupas'; document.getElementById('ghRepo').value=state.cloud.repo||'some'; document.getElementById('ghPath').value=state.cloud.path||'models.json'; document.getElementById('ghBranch').value=state.cloud.branch||'main'; document.getElementById('ghToken').value=state.cloud.token||''; document.getElementById('ghAuto').checked=!!state.cloud.auto; document.getElementById('cloudStatus').textContent='Gotowy.'; document.getElementById('cloudOverlay').classList.add('open'); }
+function closeCloud(){ document.getElementById('cloudOverlay').classList.remove('open'); }
+function toggleAuto(cb){ state.cloud.auto=!!cb.checked; saveLocal(); if(state.cloud.auto) scheduleCloudPush(); }
+function b64(s){ return btoa(unescape(encodeURIComponent(s))) }
+async function getSha(owner,repo,path,branch,token){ var url='https://api.github.com/repos/'+owner+'/'+repo+'/contents/'+encodeURIComponent(path)+'?ref='+encodeURIComponent(branch); var headers={'Accept':'application/vnd.github+json'}; if(token) headers['Authorization']='token '+token; var r=await fetch(url,{headers:headers}); if(r.status===404) return null; if(!r.ok) throw new Error('getSha HTTP '+r.status); var j=await r.json(); return j.sha; }
+async function verifyReadback(owner,repo,path,branch){ var url='https://raw.githubusercontent.com/'+owner+'/'+repo+'/'+branch+'/'+path; try{ var res=await fetch(url+'?t='+(Date.now())); var text=await res.text(); try{ var j=JSON.parse(text); document.getElementById('cloudStatus').innerHTML='<span class="status ok">✅ Zapis potwierdzony — '+(Array.isArray(j.models)?j.models.length:0)+' modeli</span> <a class="small" target="_blank" rel="noopener" href="'+url+'">(podgląd JSON)</a>'; return true; }catch(e){ document.getElementById('cloudStatus').innerHTML='<span class="status bad">⚠️ RAW nie jest JSON</span> <a class="small" target="_blank" rel="noopener" href="'+url+'">(otwórz)</a>'; return false; } }catch(e){ document.getElementById('cloudStatus').textContent='❌ Nie udało się potwierdzić odczytu: '+e.message; document.getElementById('cloudStatus').className='status bad'; return false; } }
+async function cloudSave(){ var owner=document.getElementById('ghOwner').value.trim()||state.cloud.owner, repo=document.getElementById('ghRepo').value.trim()||state.cloud.repo, path=document.getElementById('ghPath').value.trim()||state.cloud.path||'models.json', branch=document.getElementById('ghBranch').value.trim()||state.cloud.branch||'main', token=document.getElementById('ghToken').value.trim()||state.cloud.token; if(!owner||!repo||!path||!branch||!token){ document.getElementById('cloudStatus').textContent='Uzupełnij owner/repo/path/branch/token'; document.getElementById('cloudStatus').className='status bad'; return; } if(state.models.length===0){ if(!confirm('Masz 0 modeli. Zapis do GitHuba wyczyści models.json. Kontynuować?')){ document.getElementById('cloudStatus').textContent='Anulowano — brak danych do zapisu'; document.getElementById('cloudStatus').className='status bad'; return; } } state.cloud={owner:owner,repo:repo,path:path,branch:branch,token:token,auto:document.getElementById('ghAuto').checked,lastPullUrl:'https://raw.githubusercontent.com/'+owner+'/'+repo+'/'+branch+'/'+path}; saveLocal(); var st=document.getElementById('cloudStatus'); st.innerHTML='<span class="spinner"></span><span class="status wait">Wysyłam commit…</span>'; try{ var api='https://api.github.com/repos/'+owner+'/'+repo+'/contents/'+encodeURIComponent(path); var headers={'Accept':'application/vnd.github+json','Content-Type':'application/json','Authorization':'token '+token}; var data={models:state.models, tags:Array.from(state.tags), tagSets:state.tagSets, sort:{key:'created',dir:'desc'}, view:'grid'}; var contentStr=JSON.stringify(data,null,2); async function tryPut(){ var sha=await getSha(owner,repo,path,branch,token); var body={message:'MC deluxe-ultra-fix autosave', content:b64(contentStr), branch:branch, sha: sha || undefined}; return fetch(api,{method:'PUT',headers:headers,body:JSON.stringify(body)}); } var res=await tryPut(); if(res.status===409){ res=await tryPut(); } var text=await res.text(); if(!res.ok){ st.innerHTML='<span class="status bad">❌ Błąd HTTP '+res.status+'</span><div class="small">'+text.replace(/</g,'&lt;')+'</div>'; return; } st.innerHTML='<span class="spinner"></span><span class="status wait">Zapis OK — weryfikuję…</span>'; var ok=await verifyReadback(owner,repo,path,branch); if(ok) setTimeout(function(){ closeCloud(); }, 900); }catch(e){ st.textContent='❌ Wyjątek: '+e.message; st.className='status bad'; } }
+async function cloudLoad(){ var owner=document.getElementById('ghOwner').value.trim()||state.cloud.owner, repo=document.getElementById('ghRepo').value.trim()||state.cloud.repo, path=document.getElementById('ghPath').value.trim()||state.cloud.path||'models.json', branch=document.getElementById('ghBranch').value.trim()||state.cloud.branch||'main'; var url='https://raw.githubusercontent.com/'+owner+'/'+repo+'/'+branch+'/'+path; var st=document.getElementById('cloudStatus'); st.innerHTML='<span class="spinner"></span><span class="status wait">Pobieram…</span>'; try{ var res=await fetch(url+'?t='+(Date.now())); var j=await res.json(); if(Array.isArray(j.models)){ state.models=j.models; if(Array.isArray(j.tags)) state.tags=new Set(j.tags); if(j.tagSets) state.tagSets=j.tagSets; saveLocal(); renderFilterTags(); updateTagDatalist(); renderPresetTags(); initTagPickers(); applyFilters();
+  applyBlurFromState(); st.innerHTML='<span class="status ok">✅ Pobrano '+j.models.length+' modeli</span> <a class="small" target="_blank" rel="noopener" href="'+url+'">(podgląd JSON)</a>'; } else { st.textContent='Plik nie zawiera pola models'; st.className='status bad'; } }catch(e){ st.textContent='❌ Nie udało się pobrać: '+e.message; st.className='status bad'; } }
+
+function editClick(el){ 
+  var id = el && el.getAttribute('data-id') || ''; 
+  console.log('editClick inline handler; id=', id); 
+  openEditor(id || null); 
+}
+
+
+function renderTagsCompact(container, arr){
+  container.innerHTML='';
+  var max=4; // show up to 4
+  var shown=arr.slice(0,max);
+  shown.forEach(function(t){ container.appendChild(chip(t,false)); });
+  var rest=arr.length - shown.length;
+  if(rest>0){
+    var more=document.createElement('span'); more.className='chip'; more.textContent='+'+rest; container.appendChild(more);
+  }
+}
+// add / remove option in selects (both filter and editor)
+function addOption(selectId){
+  var sel=document.getElementById(selectId); if(!sel) return;
+  var v=prompt('Dodaj nową opcję (np. auburn / athletic / thicc):'); if(!v) return; v=v.trim(); if(!v) return;
+  var kind = (selectId.includes('hair') ? 'hair' : selectId.includes('body') ? 'body' : selectId.includes('eth') ? 'eth' : null);
+  if(!kind){ var opt=document.createElement('option'); opt.value=v; opt.textContent=v; sel.appendChild(opt); sel.value=v; return; }
+  if (vocab[kind].deprecated.includes(v)) vocab[kind].deprecated=vocab[kind].deprecated.filter(x=>x!==v);
+  if (!vocab[kind].active.includes(v)) vocab[kind].active.push(v);
+  saveVocab(); buildFilterSelectsFromVocab(); try{ sel.value=v; sel.onchange && sel.onchange(); }catch(_){}
+}
+function removeOption(selectId){
+  var sel=document.getElementById(selectId); if(!sel) return;
+  var v=sel.value; if(!v){ alert('Wybierz opcję do wycofania.'); return; }
+  var kind = (selectId.includes('hair') ? 'hair' : selectId.includes('body') ? 'body' : selectId.includes('eth') ? 'eth' : null);
+  if(!kind){ alert('Tę opcję może wycofać tylko słownik.'); return; }
+  var d=vocab[kind];
+  if (d.active.includes(v)){
+    d.active=d.active.filter(x=>x!==v);
+    if(!d.deprecated.includes(v)) d.deprecated.push(v);
+    saveVocab(); buildFilterSelectsFromVocab(); sel.selectedIndex=0; sel.onchange && sel.onchange(); return;
+  }
+  var to = prompt('Ta opcja jest WYCOFANA. Aby całkowicie zlikwidować, podaj NA CO zamienić istniejące rekordy (np. thicc). Puste = zostaw jako wycofaną.');
+  if(!to){ saveVocab(); buildFilterSelectsFromVocab(); return; }
+  if(!d.aliases) d.aliases={}; d.aliases[v]=to; if(!d.active.includes(to)) d.active.push(to);
+  saveVocab(); normalizeAllModels(); saveLocal(); applyFilters(); buildFilterSelectsFromVocab();
+}
+
+
+// === View / Sort / Selection ===
+var viewModeLS='mc_view_mode';
+function applyView(){ var m=localStorage.getItem(viewModeLS)||'grid'; document.body.classList.remove('view-compact','view-list'); if(m==='compact') document.body.classList.add('view-compact'); if(m==='list') document.body.classList.add('view-list'); }
+function toggleView(){ var cur=localStorage.getItem(viewModeLS)||'grid'; var next = (cur==='grid'?'compact':(cur==='compact'?'list':'grid')); localStorage.setItem(viewModeLS,next); applyView(); }
+var selectMode=false;
+function toggleSelectMode(){
+  selectMode=!selectMode;
+  document.body.classList.toggle('select-mode', selectMode);
+  var btn=document.getElementById('btnSelectMode'); if(btn) btn.classList.toggle('active', selectMode);
+  // Force checkbox visibility immediately
+  document.querySelectorAll('.select-indicator').forEach(function(cb){ cb.style.display = selectMode ? 'block' : ''; });
+  if(!selectMode){
+    // clear selections
+    (state.models||[]).forEach(function(m){ m.__sel=false; });
+    document.querySelectorAll('.card.sel').forEach(function(el){ el.classList.remove('sel'); });
+    document.querySelectorAll('.select-indicator').forEach(function(cb){ cb.checked=false; });
+    var bar=document.getElementById('bulkBar'); if(bar) bar.classList.remove('show');
+  }
+  // Re-render to ensure each card has proper click handler and checkbox state
+  try{ applyFilters(); }catch(e){}
+  try{ ensureSelectionUI(); }catch(e){}
+  console.log('toggleSelectMode ->', selectMode);
+  toast(selectMode?'Tryb zaznaczania ON':'Tryb zaznaczania OFF');
+}
+function updateBulkBar(){ var n=state.models.filter(m=>m.__sel).length; var bar=document.getElementById('bulkBar'); var cnt=document.getElementById('bulkCount'); if(cnt) cnt.textContent=n?'('+n+' zazn.)':''; bar.classList.toggle('show', n>0); }
+function bulkAddTags(){ var txt=document.getElementById('bulkTags').value||''; var tags=parseTags(txt); if(!tags.length) return; pushHistory(); state.models.forEach(function(m){ if(m.__sel){ m.tags=m.tags||[]; tags.forEach(function(t){ if(!m.tags.includes(t)) m.tags.push(t); }); } }); saveLocal(); renderFilterTags(); applyFilters(); toast('Dodano tagi'); if(state.cloud.auto) scheduleCloudPush(); }
+function bulkRemoveTags(){ var txt=document.getElementById('bulkTags').value||''; var tags=parseTags(txt); if(!tags.length) return; pushHistory(); state.models.forEach(function(m){ if(m.__sel && Array.isArray(m.tags)){ m.tags = m.tags.filter(t=>!tags.includes(t)); } }); saveLocal(); renderFilterTags(); applyFilters(); toast('Usunięto tagi'); if(state.cloud.auto) scheduleCloudPush(); }
+// Sorting
+function sortItems(arr){
+  var s=(document.getElementById('sortSelect')||{}).value || 'edited_desc';
+  var a=arr.slice();
+  if(s==='name_asc') a.sort((x,y)=>(x.name||'').localeCompare(y.name||''));
+  else if(s==='name_desc') a.sort((x,y)=>(y.name||'').localeCompare(x.name||''));
+  else if(s==='fav_desc') a.sort((x,y)=>((y.fav?1:0)-(x.fav?1:0)) || ((y.updatedAt||y.createdAt||0)-(x.updatedAt||x.createdAt||0)));
+  else /* edited_desc */ a.sort((x,y)=>((y.updatedAt||y.createdAt||0)-(x.updatedAt||x.createdAt||0)));
+  return a;
+}
+// history (undo)
+var hist=[];
+function pushHistory(){ try{ hist.push(JSON.stringify(state.models)); if(hist.length>20) hist.shift(); }catch(e){} }
+function undo(){ if(!hist.length){ toast('Brak historii'); return; } var last=hist.pop(); try{ state.models=JSON.parse(last); saveLocal(); renderFilterTags(); applyFilters(); toast('Cofnięto'); }catch(e){ toast('Nie udało się cofnąć'); } }
+// Quick add from URL
+function quickAddFromUrl(){
+  var s=(document.getElementById('quickUrl').value||'').trim(); if(!s) return;
+  var a=document.createElement('a'); a.href=s;
+  var host=a.hostname.replace('www.',''); var path=a.pathname.replace(/^\//,'');
+  var payload={ name:'', image:'', onlyfans:'', chaturbate:'', simpcity:'', insta:'', twitter:'', hair:'', body:'', eth:'', platform:'', tags:[] };
+  var username=path.split('/').filter(Boolean)[0]||'';
+  if(host.includes('onlyfans.com')){ payload.platform='onlyfans'; payload.onlyfans=s; payload.name=username||'of-user'; }
+  else if(host.includes('chaturbate.com')){ payload.platform='chaturbate'; payload.chaturbate=s; payload.name=username||'cb-user'; }
+  else if(host.includes('instagram.com')){ payload.insta=s; payload.name=username||'ig-user'; }
+  else if(host.includes('x.com')||host.includes('twitter.com')){ payload.twitter=s; payload.name=username||'tw-user'; }
+  else if(host.includes('simpcity')){ payload.simpcity=s; payload.name=username||'sc-user'; }
+  else { payload.name=host.replace(/\..*$/,'')+'-'+(username||'link'); }
+  openEditor(null);
+  setTimeout(function(){
+    document.getElementById('f_name').value=payload.name;
+    document.getElementById('f_onlyfans').value=payload.onlyfans;
+    document.getElementById('f_chaturbate').value=payload.chaturbate;
+    document.getElementById('f_insta').value=payload.insta;
+    document.getElementById('f_twitter').value=payload.twitter;
+    document.getElementById('f_simpcity').value=payload.simpcity;
+    document.getElementById('f_platform').value=payload.platform||'onlyfans';
+  }, 30);
+}
+// Bookmarklet (copied as text in cloud panel)
+function getBookmarklet(){ 
+  var u=location.href.split('?')[0];
+  var code="javascript:(function(){var s=prompt('Wklej URL modelki'); if(!s) return; var a=document.createElement('a'); a.href='"+u+"?add='+encodeURIComponent(s); document.body.appendChild(a); a.click();})();";
+  return code;
+}
+// Commit log
+async function showCommits(){
+  var owner=document.getElementById('ghOwner').value.trim()||state.cloud.owner;
+  var repo=document.getElementById('ghRepo').value.trim()||state.cloud.repo;
+  var path=document.getElementById('ghPath').value.trim()||state.cloud.path||'models.json';
+  var branch=document.getElementById('ghBranch').value.trim()||state.cloud.branch||'main';
+  var token=document.getElementById('ghToken').value.trim()||state.cloud.token;
+  var url='https://api.github.com/repos/'+owner+'/'+repo+'/commits?path='+encodeURIComponent(path)+'&sha='+encodeURIComponent(branch)+'&per_page=10';
+  var headers={'Accept':'application/vnd.github+json'}; if(token) headers['Authorization']='token '+token;
+  document.getElementById('commitList').textContent='Ładuję commity…';
+  try{
+    var r=await fetch(url,{headers:headers}); var list=await r.json();
+    if(!Array.isArray(list)){ document.getElementById('commitList').textContent='Brak danych'; return; }
+    var html=list.map(function(c){
+      var sha=c.sha.substring(0,7); var msg=(c.commit&&c.commit.message||'').split('\n')[0];
+      return '<div>• <b>'+sha+'</b> — '+msg+' <button type="button" onclick="rollbackTo(\''+c.sha+'\')">Przywróć</button></div>';
+    }).join('');
+    html += '<div class="small" style="margin-top:6px">Bookmarklet: <code>'+getBookmarklet().replace(/</g,'&lt;')+'</code></div>';
+    document.getElementById('commitList').innerHTML=html||'Brak commitów.';
+  }catch(e){ document.getElementById('commitList').textContent='Błąd: '+e.message; }
+}
+async function rollbackTo(sha){
+  if(!confirm('Pobrać wersję z commita i nadpisać lokalne dane?')) return;
+  var owner=document.getElementById('ghOwner').value.trim()||state.cloud.owner;
+  var repo=document.getElementById('ghRepo').value.trim()||state.cloud.repo;
+  var path=document.getElementById('ghPath').value.trim()||state.cloud.path||'models.json';
+  var url='https://raw.githubusercontent.com/'+owner+'/'+repo+'/'+sha+'/'+path;
+  try{
+    var r=await fetch(url+'?t='+(Date.now())); var j=await r.json();
+    if(Array.isArray(j.models)){ pushHistory(); state.models=j.models; if(Array.isArray(j.tags)) state.tags=new Set(j.tags); if(j.tagSets) state.tagSets=j.tagSets; saveLocal(); renderFilterTags(); applyFilters(); toast('Przywrócono z commit '+sha.substring(0,7)); }
+    else{ toast('Ta wersja nie zawiera models[]'); }
+  }catch(e){ toast('Nie udało się pobrać tej wersji'); }
+}
+
+
+// --- Tag Organizer logic ---
+var canonicalMap = {
+  'bj':'blowjob',
+  'blow job':'blowjob',
+  'big_ass':'big ass',
+  'bigass':'big ass',
+  'big- ass':'big ass',
+  'p.a.w.g':'pawg',
+  'pawg':'pawg',
+  'milfs':'milf',
+  'thick':'thicc',
+  'mom':'milf',
+  'cowgirl':'riding'
+};
+function normalizeTagBasic(t){
+  if(!t) return t;
+  t = t.trim().toLowerCase().replace(/_/g,' ').replace(/\s+/g,' ');
+  return t;
+}
+function canonicalize(t){
+  var n = normalizeTagBasic(t);
+  if(canonicalMap[n]) return canonicalMap[n];
+  return n;
+}
+function openTagOrganizer(){
+  renderTagStats();
+  renderTagSuggestions();
+  document.getElementById('tagOrgStatus').textContent='Gotowy.';
+  document.getElementById('tagOrgOverlay').classList.add('open');
+}
+function closeTagOrganizer(){ document.getElementById('tagOrgOverlay').classList.remove('open'); }
+function computeTagStats(){
+  var map={};
+  (state.models||[]).forEach(function(m){
+    (m.tags||[]).forEach(function(t){
+      var n = normalizeTagBasic(t);
+      if(!n) return;
+      map[n] = (map[n]||0)+1;
+    });
+  });
+  return Object.entries(map).sort(function(a,b){ return b[1]-a[1]; });
+}
+function renderTagStats(){
+  var el=document.getElementById('tagList'); if(!el) return;
+  var stats=computeTagStats();
+  el.innerHTML = stats.map(function([t,c]){
+    var esc=t.replace(/</g,'&lt;');
+    return '<div class="tagrow"><span>'+esc+'</span><span class="small">'+c+'</span><button type="button" onclick="prefillMerge(\''+esc+'\')">→ Do</button></div>';
+  }).join('') || '<div class="smallmuted">Brak tagów</div>';
+}
+function prefillMerge(t){ document.getElementById('mergeTo').value=t; }
+// Simple near-duplicate finder (distance <=2 or underscore/space variants)
+function strDist(a,b){
+  a=a.toLowerCase(); b=b.toLowerCase();
+  if(a===b) return 0;
+  if(Math.abs(a.length-b.length)>2) return 99;
+  var m=[], i, j;
+  for(i=0;i<=a.length;i++){ m[i]=[i]; }
+  for(j=0;j<=b.length;j++){ m[0][j]=j; }
+  for(i=1;i<=a.length;i++){
+    for(j=1;j<=b.length;j++){
+      var cost = a[i-1]===b[j-1]?0:1;
+      m[i][j] = Math.min(m[i-1][j]+1, m[i][j-1]+1, m[i-1][j-1]+cost);
+    }
+  }
+  return m[a.length][b.length];
+}
+function renderTagSuggestions(){
+  var stats=computeTagStats();
+  var arr=stats.map(function(x){ return x[0]; });
+  var sug=[];
+  // underscore/space variants and case
+  arr.forEach(function(t){
+    var n=normalizeTagBasic(t);
+    var alt=n.replace(/\s+/g,'_');
+    if(arr.includes(alt) && alt!==n) sug.push([alt,n,'_ → spacja']);
+    var alt2=n.replace(/_/g,' ');
+    if(arr.includes(alt2) && alt2!==n) sug.push([alt2,n,'_ → spacja']);
+  });
+  // distance pairs
+  for(var i=0;i<arr.length;i++){
+    for(var j=i+1;j<arr.length;j++){
+      var a=arr[i], b=arr[j];
+      var d=strDist(a,b);
+      if(d>0 && d<=2){
+        // e.g., milf vs milfs
+        var to = (canonicalMap[a]||a).length <= (canonicalMap[b]||b).length ? (canonicalMap[b]||b) : (canonicalMap[a]||a);
+        sug.push([a,b,'podobne ('+d+')']);
+      }
+    }
+  }
+  // canonical map suggestions
+  Object.keys(canonicalMap).forEach(function(k){
+    var v=canonicalMap[k];
+    if(arr.includes(k) && arr.includes(v)===false) sug.push([k,v,'słownik']);
+  });
+  // Render
+  var el=document.getElementById('suggestList'); if(!el) return;
+  // Deduplicate suggestions
+  var seen={};
+  var html=sug.filter(function(x){ var key=x[0]+'>'+x[1]; if(seen[key]) return false; seen[key]=true; return x[0]!==x[1]; })
+    .slice(0,200)
+    .map(function([from,to,why]){
+      var fr=from.replace(/</g,'&lt;'); var t=to.replace(/</g,'&lt;');
+      return '<div class="sug">'+fr+' → <b>'+t+'</b> <span class="smallmuted">('+why+')</span> <button type="button" onclick="setMerge(\''+fr+'\',\''+t+'\')">Scal</button></div>';
+    }).join('');
+  el.innerHTML = html || '<div class="smallmuted">Brak propozycji</div>';
+}
+function setMerge(fr,to){ document.getElementById('mergeFrom').value=fr; document.getElementById('mergeTo').value=to; }
+function tagMerge(){
+  var from=(document.getElementById('mergeFrom').value||'').trim();
+  var to=(document.getElementById('mergeTo').value||'').trim();
+  if(!from || !to){ document.getElementById('tagOrgStatus').textContent='Podaj „Z” i „Do”.'; document.getElementById('tagOrgStatus').className='status bad'; return; }
+  pushHistory();
+  state.models.forEach(function(m){
+    if(Array.isArray(m.tags)){
+      m.tags = m.tags.map(function(t){
+        return normalizeTagBasic(t)===normalizeTagBasic(from) ? to : t;
+      });
+      // cleanup duplicates post-merge
+      var seen={}; m.tags = m.tags.filter(function(t){ var n=normalizeTagBasic(t); if(seen[n]) return false; seen[n]=true; return true; });
+    }
+  });
+  saveLocal(); renderFilterTags(); updateTagDatalist(); initTagPickers(); applyFilters();
+  document.getElementById('tagOrgStatus').textContent='Scalono ✅'; document.getElementById('tagOrgStatus').className='status ok';
+  renderTagStats(); renderTagSuggestions();
+}
+function tagAutoclean(){
+  pushHistory();
+  state.models.forEach(function(m){
+    if(Array.isArray(m.tags)){
+      m.tags = m.tags.map(canonicalize);
+      // unique
+      var seen={}; m.tags = m.tags.filter(function(t){ var n=normalizeTagBasic(t); if(seen[n]) return false; seen[n]=true; return true; });
+    }
+  });
+  // global tag set
+  state.tags = new Set([].concat.apply([], state.models.map(function(m){ return m.tags||[]; })));
+  saveLocal(); renderFilterTags(); updateTagDatalist(); initTagPickers(); applyFilters();
+  document.getElementById('tagOrgStatus').textContent='Wyczyszczono format ✅'; document.getElementById('tagOrgStatus').className='status ok';
+  renderTagStats(); renderTagSuggestions();
+}
+function applyCanonical(){
+  tagAutoclean(); // already applies canonicalMap
+}
+function applyAutoTags(){
+  var onlySel = !!state.models.find(function(m){ return m.__sel; });
+  var useHair=document.getElementById('autoHair').checked;
+  var useBody=document.getElementById('autoBody').checked;
+  var useEth=document.getElementById('autoEth').checked;
+  if(!useHair && !useBody && !useEth){ document.getElementById('tagOrgStatus').textContent='Zaznacz co dodać (włosy/sylwetka/pochodzenie).'; document.getElementById('tagOrgStatus').className='status bad'; return; }
+  pushHistory();
+  state.models.forEach(function(m){
+    if(onlySel && !m.__sel) return;
+    m.tags = m.tags||[];
+    var add=[];
+    if(useHair && m.hair) add.push(m.hair);
+    if(useBody && m.body) add.push(m.body);
+    if(useEth && m.eth) add.push(m.eth);
+    add.map(canonicalize).forEach(function(t){ if(t && !m.tags.includes(t)) m.tags.push(t); state.tags.add(t); });
+    m.updatedAt=Date.now();
+  });
+  saveLocal(); renderFilterTags(); updateTagDatalist(); initTagPickers(); applyFilters();
+  document.getElementById('tagOrgStatus').textContent='Dodano auto-tagi ✅'; document.getElementById('tagOrgStatus').className='status ok';
+  renderTagStats();
+}
+
+
+function ensureSelectionUI(){
+  var cards = document.querySelectorAll('.card');
+  cards.forEach(function(card){
+    var cb = card.querySelector('input.select-indicator');
+    if(!cb){
+      cb = document.createElement('input');
+      cb.type='checkbox';
+      cb.className='select-indicator';
+      cb.style.position='absolute';
+      cb.style.top='8px';
+      cb.style.left='8px';
+      cb.style.zIndex='5';
+      cb.onclick=function(e){ e.stopPropagation(); var id=card.getAttribute('data-id'); var m=(state.models||[]).find(x=>x.id===id); if(!m) return; m.__sel=cb.checked; card.classList.toggle('sel', m.__sel); updateBulkBar(); };
+      card.appendChild(cb);
+    }
+    // Sync checkbox state with model
+    var id = card.getAttribute('data-id');
+    var m = (state.models||[]).find(x=>x.id===id);
+    if(m){ cb.checked = !!m.__sel; }
+    // Force visible only in select mode
+    cb.style.display = selectMode ? 'block' : '';
+  });
+}
+
+function scheduleCloudPush(){ if(!state.cloud.auto) return; if(pushTimer) clearTimeout(pushTimer); pushTimer=setTimeout(function(){ cloudSave(); },1500); }
+</script>
+</body>
+</html>
