@@ -1504,23 +1504,6 @@
     }
   },
   {
-    "id": "imp-avanicks",
-    "name": "avanicks",
-    "image": "https://notsupas.github.io/some/images/avanicks.jpg",
-    "tags": [],
-    "rating": 0,
-    "isFavorite": false,
-    "createdAt": null,
-    "socials": {
-      "instagram": "https://instagram.com/theavanicks",
-      "onlyfans": "https://onlyfans.com/avanicks",
-      "twitter": "",
-      "tiktok": "",
-      "snapchat": "",
-      "simpcity": "https://simpcity.su/threads/ava-nicks.15459/"
-    }
-  },
-  {
     "id": "imp-floridajuicy",
     "name": "floridajuicy",
     "image": "https://notsupas.github.io/some/images/floridajuicy.jpg",
